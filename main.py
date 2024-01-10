@@ -1,7 +1,10 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for, session
 import pyodbc
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key' 
+
+
 
 # Replace these with your MSSQL database credentials
 db_config = {
@@ -10,6 +13,16 @@ db_config = {
     'password': 'Passw0rd',
     'database': 'TestDB',
 }
+
+users = {
+    'user1': 'password1',
+    'user2': 'password2',
+}
+
+def is_valid_credentials(username, password):
+    # Check if the provided username and password are valid
+    return users.get(username) == password
+
 
 # Number of entries per page
 entries_per_page = 10
@@ -98,8 +111,30 @@ def index():
     columns, data, num_pages = get_data(page, selected_columns)
 
     all_columns=get_all_columns("AppOrtamTable")
-    
-    return render_template('index.html', all_columns=all_columns, columns=columns, data=data, page=page, num_pages=num_pages, selected_columns=selected_columns)
+    if 'username' in session:
+        return render_template('index.html',username=session['username'], all_columns=all_columns, columns=columns, data=data, page=page, num_pages=num_pages, selected_columns=selected_columns)
+    else:
+        return redirect(url_for('login'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        if is_valid_credentials(username, password):
+            session['username'] = username
+            return redirect(url_for('index'))
+        else:
+            error = 'Invalid credentials. Please try again.'
+
+    return render_template('login.html', error=error) if 'error' in locals() else render_template('login.html')
+
+
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    return redirect(url_for('index'))
 
 @app.route('/test')
 def deneme():

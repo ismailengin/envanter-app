@@ -26,26 +26,39 @@
         
     });</script>
 
-    <style>.mt-100{margin-top: 100px}body{background: #00B4DB;background: -webkit-linear-gradient(to right, #0083B0, #00B4DB);background: linear-gradient(to right, #0083B0, #00B4DB);color: #514B64;min-height: 100vh}
+    <style>.mt-100{margin-top: 100px}
+    
+    body
+    {
+        /* background: #00B4DB; */
+        /* background: -webkit-linear-gradient(to right, #0083B0, #00B4DB); */
+        /* background: linear-gradient(to right, #0083B0, #00B4DB); */
+        /* color: #514B64; */
+        /* min-height: 100vh */
+    }
     </style>
 </head>
 
 <body>
  
 
-<div class="container mt-5">
+<div class="container-fluid mx-auto">
     <form method="GET" action="/">
-        <div class="row d-flex justify-content-center mt-100">
+        <div class="row d-flex  mt-100">
             <div class="col-md-6"> 
                 <select name="selected_columns" id="choices-multiple-remove-button" placeholder="Select upto 5 tags" multiple>
+                    
                     {% for column in all_columns%}
                     <option value="{{column}}" id="{{column}}"></option> 
                     <label class="form-check-label" for="{{ column }}">
                         {{ column }}
                     </label>
                     {% endfor %}
-                </select> </div>
-        </div><button type="submit" class="btn btn-primary">Apply Filter</button>
+                </select> 
+                <button type="submit" class="btn btn-primary">Apply Filter</button>
+            </div>
+        </div>
+    </form>
         <div class="container-fluid mt-5">
             <table class="table table-bordered">
                 <thead class="thead-dark">
@@ -68,7 +81,7 @@
         </div>
     
         <!-- Add this at the bottom of your table in index.html -->
-        <div class="container mt-3">
+        <div class="container-fluid mx-auto">
             <nav aria-label="Page navigation example">
                 <ul class="pagination">
                     {% for i in range(1, num_pages + 1) %}
@@ -79,7 +92,6 @@
                 </ul>
             </nav>
         </div>
-    </form>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
