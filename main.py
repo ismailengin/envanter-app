@@ -14,7 +14,7 @@ db_config = {
 # Number of entries per page
 entries_per_page = 10
 
-def get_data(page,selected_columns):
+def get_db_connection():
     # Connect to the MSSQL database
     connection = pyodbc.connect(
         'DRIVER={SQL Server};'
@@ -23,6 +23,28 @@ def get_data(page,selected_columns):
         f'UID={db_config["user"]};'
         f'PWD={db_config["password"]};'
     )
+    return connection
+    
+def get_all_columns(table_name):
+    # Connect to the MSSQL database
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    # Execute a query to get all column names for the specified table
+    query = f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '{table_name}'"
+    cursor.execute(query)
+
+    # Fetch all column names
+    columns = [row.COLUMN_NAME for row in cursor.fetchall()]
+
+    # Close the connection
+    connection.close()
+
+    return columns
+
+def get_data(page,selected_columns):
+ 
+    connection=get_db_connection()
     cursor = connection.cursor()
 
     # Calculate the offset based on the current page
@@ -34,13 +56,15 @@ def get_data(page,selected_columns):
     total_rows = cursor.fetchone()[0]
 
     # Execute a query to get data from your table (replace 'your_table' with your actual table name)
-    query = f'SELECT * FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH NEXT {entries_per_page} ROWS ONLY'
-    cursor.execute(query)
-
+    # query = f'SELECT * FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH NEXT {entries_per_page} ROWS ONLY'
+    # cursor.execute(query)
     
     # Execute a query to get data from your table (replace 'your_table' with your actual table name)
     # Only select the specified columns
-    query = f'SELECT {", ".join(selected_columns)} FROM your_table ORDER BY your_column OFFSET {offset} ROWS FETCH NEXT {entries_per_page} ROWS ONLY'
+    # query = f'SELECT {", ".join(selected_columns)} FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH NEXT {entries_per_page} ROWS ONLY'
+    # query = f'SELECT {", ".join(selected_columns)} FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH FIRST {entries_per_page} ROWS ONLY'
+    query = f'SELECT {", ".join(selected_columns)} FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH NEXT {entries_per_page} ROWS ONLY'
+
     cursor.execute(query)
 
     num_pages = (total_rows // entries_per_page) + (1 if total_rows % entries_per_page > 0 else 0)
@@ -61,9 +85,24 @@ def index():
     # Get the page number from the request's query parameters, default to 1 if not provided
     page = int(request.args.get('page', 1))
     
-    columns, data, num_pages = get_data(page)
-    
-    return render_template('index.html', columns=columns, data=data, page=page, num_pages=num_pages)
+    for key in request.form.keys():
+        values = request.form.getlist(key)
+        print("Key", key, "Value:", values)
 
+    # Get the selected columns from the submitted form data
+    selected_columns = request.args.getlist('selected_columns')
+
+    if not selected_columns:
+        selected_columns = ['*']
+
+    columns, data, num_pages = get_data(page, selected_columns)
+
+    all_columns=get_all_columns("AppOrtamTable")
+    
+    return render_template('index.html', all_columns=all_columns, columns=columns, data=data, page=page, num_pages=num_pages, selected_columns=selected_columns)
+
+@app.route('/test')
+def deneme():
+    return render_template('deneme.html')
 if __name__ == '__main__':
     app.run(debug=True)
