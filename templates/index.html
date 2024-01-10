@@ -7,7 +7,7 @@
     <title>MSSQL Data Display</title>
 </head>
 <body>
-    <div class="container mt-5">
+    <div class="container-fluid mt-5">
         <table class="table">
             <thead class="thead-dark">
                 <tr>
@@ -27,6 +27,20 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Add this at the bottom of your table in index.html -->
+    <div class="container mt-3">
+        <nav aria-label="Page navigation example">
+            <ul class="pagination">
+                {% for i in range(1, num_pages + 1) %}
+                    <li class="page-item {% if i == page %}active{% endif %}">
+                        <a class="page-link" href="?page={{ i }}">{{ i }}</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </nav>
+    </div>
+
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
