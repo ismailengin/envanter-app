@@ -55,13 +55,13 @@ def get_all_columns(table_name):
 
     return columns
 
-def get_data(page,selected_columns):
+def get_data():
  
     connection=get_db_connection()
     cursor = connection.cursor()
 
     # Calculate the offset based on the current page
-    offset = (page - 1) * entries_per_page
+    # offset = (page - 1) * entries_per_page
     
     # Execute a query to get the total number of rows
     count_query = 'SELECT COUNT(*) FROM AppOrtamTable'
@@ -76,11 +76,12 @@ def get_data(page,selected_columns):
     # Only select the specified columns
     # query = f'SELECT {", ".join(selected_columns)} FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH NEXT {entries_per_page} ROWS ONLY'
     # query = f'SELECT {", ".join(selected_columns)} FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH FIRST {entries_per_page} ROWS ONLY'
-    query = f'SELECT {", ".join(selected_columns)} FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH NEXT {entries_per_page} ROWS ONLY'
+    # query = f'SELECT {", ".join(selected_columns)} FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH NEXT {entries_per_page} ROWS ONLY'
+    query = f'SELECT * from AppOrtamTable'
 
     cursor.execute(query)
 
-    num_pages = (total_rows // entries_per_page) + (1 if total_rows % entries_per_page > 0 else 0)
+    # num_pages = (total_rows // entries_per_page) + (1 if total_rows % entries_per_page > 0 else 0)
 
     # Fetch column names
     columns = [column[0] for column in cursor.description]
@@ -91,7 +92,7 @@ def get_data(page,selected_columns):
     # Close the connection
     connection.close()
 
-    return columns, data, num_pages
+    return columns, data
 
 @app.route('/')
 def index():
@@ -108,11 +109,11 @@ def index():
     if not selected_columns:
         selected_columns = ['*']
 
-    columns, data, num_pages = get_data(page, selected_columns)
+    columns, data = get_data()
 
     all_columns=get_all_columns("AppOrtamTable")
     if 'username' in session:
-        return render_template('index.html',username=session['username'], all_columns=all_columns, columns=columns, data=data, page=page, num_pages=num_pages, selected_columns=selected_columns)
+        return render_template('index.html',username=session['username'], all_columns=all_columns, columns=columns, data=data, selected_columns=selected_columns)
     else:
         return redirect(url_for('login'))
 
