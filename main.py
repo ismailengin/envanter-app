@@ -1,8 +1,10 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 import pyodbc
+from datetime import timedelta
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key' 
+app.config['PERMANENT_SESSION_LIFETIME'] =  timedelta(minutes=30)
 
 
 
@@ -119,6 +121,7 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    session.permanent=True
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
