@@ -31,14 +31,21 @@ def is_valid_credentials(username, password):
 entries_per_page = 10
 
 def get_db_connection():
-    # Connect to the MSSQL database
+    
+    if(os.name=="nt"):
+        driver="SQL Server"
+        
+    else:
+        driver="ODBC Driver 17 for SQL Server"
+    
     connection = pyodbc.connect(
-        'DRIVER={SQL Server};'
-        f'SERVER={db_config["server"]};'
-        f'DATABASE={db_config["database"]};'
-        f'UID={db_config["user"]};'
-        f'PWD={db_config["password"]};'
-    )
+            f'DRIVER={driver};'
+            f'SERVER={db_config["server"]};'
+            f'DATABASE={db_config["database"]};'
+            f'UID={db_config["user"]};'
+            f'PWD={db_config["password"]};'
+        )
+    
     return connection
     
 def get_all_columns(table_name):
