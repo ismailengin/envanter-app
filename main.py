@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 import pyodbc
 from datetime import timedelta
+import os
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key' 
@@ -10,10 +11,10 @@ app.config['PERMANENT_SESSION_LIFETIME'] =  timedelta(minutes=30)
 
 # Replace these with your MSSQL database credentials
 db_config = {
-    'server': 'localhost',
-    'user': 'SA',
-    'password': 'Passw0rd',
-    'database': 'TestDB',
+    'server': os.environ.get('DB_SERVER','localhost'),
+    'user': os.environ.get('DB_USER','SA'),
+    'password': os.environ.get('DB_PASSWORD','Passw0rd'),
+    'database': os.environ.get('DB_DATABASE','TestDB'),
 }
 
 users = {
@@ -68,7 +69,7 @@ def get_data():
     # Execute a query to get the total number of rows
     count_query = 'SELECT COUNT(*) FROM AppOrtamTable'
     cursor.execute(count_query)
-    total_rows = cursor.fetchone()[0]
+    # total_rows = cursor.fetchone()[0]
 
     # Execute a query to get data from your table (replace 'your_table' with your actual table name)
     # query = f'SELECT * FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH NEXT {entries_per_page} ROWS ONLY'
