@@ -72,10 +72,18 @@
             //         targets: "_all",
             //         className: 'dt-right'
             //     }
-            // ]
+            // ],
+            // columnDefs: [{ width: 200, targets: "_all" }],
+            // fixedColumns: true,
             dom: 'Bfrtip',
+            
             buttons: [
-                'colvis'
+                'colvis',
+            {
+                extend: 'collection',
+                text: 'Export',
+                buttons: ['copy', 'excel', 'csv', 'pdf', 'print']
+            }
             ],
             scrollX: true
         });
