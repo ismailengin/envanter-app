@@ -65,7 +65,7 @@ def get_all_columns(table_name):
 
     return columns
 
-def get_data():
+def get_data(table_name):
  
     connection=get_db_connection()
     cursor = connection.cursor()
@@ -87,7 +87,7 @@ def get_data():
     # query = f'SELECT {", ".join(selected_columns)} FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH NEXT {entries_per_page} ROWS ONLY'
     # query = f'SELECT {", ".join(selected_columns)} FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH FIRST {entries_per_page} ROWS ONLY'
     # query = f'SELECT {", ".join(selected_columns)} FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH NEXT {entries_per_page} ROWS ONLY'
-    query = f'SELECT * from AppOrtamTable'
+    query = f'SELECT * from {table_name}'
 
     cursor.execute(query)
 
@@ -106,24 +106,23 @@ def get_data():
 
 @app.route('/')
 def index():
-    # Get the page number from the request's query parameters, default to 1 if not provided
-    page = int(request.args.get('page', 1))
     
+    envanter_table_name="AppOrtamTable"
     for key in request.form.keys():
         values = request.form.getlist(key)
         print("Key", key, "Value:", values)
 
-    # Get the selected columns from the submitted form data
-    selected_columns = request.args.getlist('selected_columns')
+    # # Get the selected columns from the submitted form data
+    # selected_columns = request.args.getlist('selected_columns')
 
-    if not selected_columns:
-        selected_columns = ['*']
+    # if not selected_columns:
+    #     selected_columns = ['*']
 
-    columns, data = get_data()
+    columns, data = get_data(envanter_table_name)
 
-    all_columns=get_all_columns("AppOrtamTable")
+    all_columns=get_all_columns(envanter_table_name)
     if 'username' in session:
-        return render_template('index.html',username=session['username'], all_columns=all_columns, columns=columns, data=data, selected_columns=selected_columns)
+        return render_template('index.html',username=session['username'], all_columns=all_columns, columns=columns, data=data)
     else:
         return redirect(url_for('login'))
 
@@ -150,6 +149,6 @@ def logout():
 
 @app.route('/test')
 def deneme():
-    return render_template('deneme.html')
+    return render_template('login.html')
 if __name__ == '__main__':
     app.run(debug=True)
