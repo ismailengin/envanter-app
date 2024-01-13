@@ -119,10 +119,13 @@ def index():
     #     selected_columns = ['*']
 
     columns, data = get_data(envanter_table_name)
+    
+    selected_columns=["id", "ServiceType", "ServiceName", "Hostname"]
+    detail_columns=['Hostname', 'generalType', 'LBServiceGroup', 'ProcessSearchName']
 
     all_columns=get_all_columns(envanter_table_name)
     if 'username' in session:
-        return render_template('index.html',username=session['username'], all_columns=all_columns, columns=columns, data=data)
+        return render_template('index.html',username=session['username'], all_columns=all_columns, selected_columns=selected_columns, columns=columns, detail_columns=detail_columns, data=data)
     else:
         return redirect(url_for('login'))
 
