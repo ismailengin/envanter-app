@@ -131,18 +131,22 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    session.permanent=True
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
 
         if is_valid_credentials(username, password):
+            session.permanent=True
             session['username'] = username
             return redirect(url_for('index'))
         else:
             error = 'Invalid credentials. Please try again.'
 
-    return render_template('login.html', error=error) if 'error' in locals() else render_template('login.html')
+    else:
+        if 'username' in session:
+            return redirect(url_for('index'))
+        else:
+            return render_template('login.html', error=error) if 'error' in locals() else render_template('login.html')
 
 
 @app.route('/logout')
