@@ -107,10 +107,10 @@ def get_data(table_name):
 @app.route('/')
 def index():
     
-    envanter_table_name="AppOrtamTable"
-    for key in request.form.keys():
-        values = request.form.getlist(key)
-        print("Key", key, "Value:", values)
+    envanter_table_name="BackendEnvanter"
+    # for key in request.form.keys():
+    #     values = request.form.getlist(key)
+    #     print("Key", key, "Value:", values)
 
     # # Get the selected columns from the submitted form data
     # selected_columns = request.args.getlist('selected_columns')
@@ -120,8 +120,8 @@ def index():
 
     columns, data = get_data(envanter_table_name)
     
-    selected_columns=["id", "ServiceType", "ServiceName", "Hostname"]
-    detail_columns=['Hostname', 'generalType', 'LBServiceGroup', 'ProcessSearchName']
+    selected_columns=["ServisTipi", "ServisAdı", "Makine", "ApplicationServerTipi", "JavaTipi", "UygulamaKritiklik", "UygulamaTipi"]
+    detail_columns=["ostip", "JavaVersion", "dependecyJarTarama", "AAMEnabled", "ApplicationServerPath"]
 
     all_columns=get_all_columns(envanter_table_name)
     if 'username' in session:

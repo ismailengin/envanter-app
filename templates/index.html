@@ -85,16 +85,15 @@
 
         
         /* Formatting function for row details - modify as you need */
-        function formatDetails ( id ) {
+        function formatDetails (id, appServerType ) {
             var str = '<table class="table table-bordered"> <tbody> '
-            // console.log(id);
             "{%for row in data%}"
-                var temp_id= "{{row.id}}"
-                if (temp_id === id) { 
+                var temp_id= "{{row.Makine}}"
+                var temp_appServerType = "{{row.ApplicationServerTipi}}"
+                if (temp_id === id && appServerType == temp_appServerType) { 
                 "{%for column in detail_columns%}"
-                    var deneme = "{{row[column]}}";
                     str += '<tr>'
-                        + '<td>' + "{{column}}=" + "{{row[column]}}" + '</td>'
+                        + '<td>' + "{{column}}=" + "{{row[column] | trim}}" + '</td>'
                         + '</tr>'
                 "{%endfor%}"
                 }
@@ -163,7 +162,9 @@
         }
         else {
             // Open this row
-            row.child( formatDetails(row.data()[0]) ).show();
+            hostname=row.data()[2]
+            appServerType=row.data()[3]
+            row.child(formatDetails(hostname,appServerType)).show();
             tr.addClass('shown');
         }
     } );   
