@@ -1,0 +1,54 @@
+{% extends 'layout.html' %}
+{%block head%}
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Chart Sample</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+{% endblock %}
+        </div>
+    </nav>
+
+{% block content %}
+<div class="container" >
+    <div class="chart-container" style="height: 50vh; width:80vh;">
+    <canvas id="myChart"></canvas>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  const ctx = document.getElementById('myChart');
+
+  function extractString(input) {
+        var match = input.match(/&#39;([^&#39;]+)&#39;/);
+        if (match && match[1]) {
+            return match[1];
+        } else {
+            return null;
+        }
+    }
+
+
+  var runtimes = []
+  '{%for runtime in runtime_stats%}'
+  runtimes.push("{{runtime}}")
+  '{%endfor%}'
+  console.log(runtimes.map(row=> row=row.split(',')[0]))
+  new Chart(ctx, {
+    type: 'pie',
+    data: {
+        labels: runtimes.map(row => row=extractString(row.split(',')[0])),
+      datasets: [ {
+        data: runtimes.map(row=> parseInt(row.split(',')[1].slice(0,-1)))
+      }]
+    },
+    options: {
+      responsive:true,
+      maintainAspectRation:false
+    }
+  });
+</script>
+
+{% endblock %}

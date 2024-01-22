@@ -74,8 +74,8 @@ def get_data(table_name):
     # offset = (page - 1) * entries_per_page
     
     # Execute a query to get the total number of rows
-    count_query = 'SELECT COUNT(*) FROM AppOrtamTable'
-    cursor.execute(count_query)
+    # count_query = 'SELECT COUNT(*) FROM AppOrtamTable'
+    # cursor.execute(count_query)
     # total_rows = cursor.fetchone()[0]
 
     # Execute a query to get data from your table (replace 'your_table' with your actual table name)
@@ -103,6 +103,39 @@ def get_data(table_name):
     connection.close()
 
     return columns, data
+
+def get_runtime_stats():
+    connection=get_db_connection()
+    cursor = connection.cursor()
+
+    # Calculate the offset based on the current page
+    # offset = (page - 1) * entries_per_page
+    
+    # Execute a query to get the total number of rows
+    count_query = 'select ApplicationServerTipi, COUNT(ApplicationServerTipi) AS ApplicationServerTipiCount from BackendEnvanter group by ApplicationServerTipi'
+    cursor.execute(count_query)
+    # total_rows = cursor.fetchone()[0]
+
+    # Execute a query to get data from your table (replace 'your_table' with your actual table name)
+    # query = f'SELECT * FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH NEXT {entries_per_page} ROWS ONLY'
+    # cursor.execute(query)
+    
+    # Execute a query to get data from your table (replace 'your_table' with your actual table name)
+    # Only select the specified columns
+    # query = f'SELECT {", ".join(selected_columns)} FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH NEXT {entries_per_page} ROWS ONLY'
+    # query = f'SELECT {", ".join(selected_columns)} FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH FIRST {entries_per_page} ROWS ONLY'
+    # query = f'SELECT {", ".join(selected_columns)} FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH NEXT {entries_per_page} ROWS ONLY'
+    # num_pages = (total_rows // entries_per_page) + (1 if total_rows % entries_per_page > 0 else 0)
+
+    # Fetch column names
+
+    # Fetch all rows
+    data = cursor.fetchall()
+
+    # Close the connection
+    connection.close()
+    
+    return data
 
 @app.route('/')
 def index():
@@ -156,6 +189,9 @@ def logout():
 
 @app.route('/test')
 def deneme():
-    return render_template('login.html')
+    runtime_stats=get_runtime_stats()
+    print(type(runtime_stats))
+    return render_template('chart.html',runtime_stats=runtime_stats)
+
 if __name__ == '__main__':
     app.run(debug=True)
