@@ -33,6 +33,10 @@
         background: #0d6efd !important;
         
     }
+    
+    tr {
+        cursor: pointer;
+    }
     </style>
      {% endblock %}
 
@@ -130,7 +134,7 @@
                     target: 'tr'
                 }
             },
-            
+
             "initComplete": function(settings, json) {
                     $('#main-div').show();
 
@@ -160,9 +164,8 @@
             row.child(formatDetails(hostname,appServerType)).show();
             tr.addClass('shown');
         }
-    } );   
-    
-        })
+        } );   
+    })
     
     
     </script>
