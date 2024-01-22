@@ -174,12 +174,13 @@ def login():
             return redirect(url_for('index'))
         else:
             error = 'Invalid credentials. Please try again.'
+            return render_template('login.html', error=error) if 'error' in locals() else render_template('login.html')
 
     else:
         if 'username' in session:
             return redirect(url_for('index'))
         else:
-            return render_template('login.html', error=error) if 'error' in locals() else render_template('login.html')
+            return render_template('login.html') if 'error' in locals() else render_template('login.html')
 
 
 @app.route('/logout')
