@@ -1,98 +1,100 @@
 {%extends 'layout.html' %}
-    {% block head %}
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MWBE Envanter</title>
-    
-    
-    
-    <link href="https://cdn.datatables.net/v/bs5/jq-3.7.0/dt-1.13.8/b-2.4.2/b-colvis-2.4.2/b-html5-2.4.2/datatables.min.css" rel="stylesheet">
-    
-    <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
-    
-    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
-    <script src="https://cdn.datatables.net/v/bs5/jq-3.7.0/dt-1.13.8/b-2.4.2/b-colvis-2.4.2/b-html5-2.4.2/datatables.min.js"></script>
-    
-    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+{% block head %}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MWBE Envanter</title>
 
-    
 
-    <style>
+
+<link href="https://cdn.datatables.net/v/bs5/jq-3.7.0/dt-1.13.8/b-2.4.2/b-colvis-2.4.2/b-html5-2.4.2/datatables.min.css"
+    rel="stylesheet">
+
+<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script
+    src="https://cdn.datatables.net/v/bs5/jq-3.7.0/dt-1.13.8/b-2.4.2/b-colvis-2.4.2/b-html5-2.4.2/datatables.min.js"></script>
+
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+
+
+
+<style>
     .table thead th {
-        background-color: #0d6efd;;
+        background-color: #0d6efd;
         color: white;
     }
 
     .buttons-colvis {
         background: #0d6efd !important;
     }
-    
+
     .buttons-collection {
         background: #0d6efd !important;
-        
+
     }
-    
+
     tr {
         cursor: pointer;
     }
-    </style>
-     {% endblock %}
+</style>
+{% endblock %}
 
-    {% block content %}
-    <div id="main-div" class="container-sm justify-content-center pb-5 pe-5 ps-5" style="display: none;">
-            <table id="main-datatable" class=" table table-striped table-bordered compact" style="width: 100%;">
-                <thead>
-                    <tr>
-                        {% for column in selected_columns %}
-                        <th>{{ column }}</th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in data %}
-                    <tr>
-                        <!-- {% for value in row %}
+{% block content %}
+<div id="main-div" class="container-sm justify-content-center pb-5 pe-5 ps-5" style="display: none;">
+    <table id="main-datatable" class=" table table-striped table-bordered compact" style="width: 100%;">
+        <thead>
+            <tr>
+                {% for column in selected_columns %}
+                <th>{{ column }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data %}
+            <tr>
+                <!-- {% for value in row %}
                         <td>{{ row.id }}</td>
                         {% endfor %} -->
-                        {%for value in selected_columns%}
-                        <td>{{row[value]}}</td>
-                        {% endfor %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            
-        
-    </div>
-    {% endblock %}
+                {%for value in selected_columns%}
+                <td>{{row[value]}}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 
-    {% block scripts %}
-    <script>
 
-        
-        /* Formatting function for row details - modify as you need */
-        function formatDetails (id, appServerType ) {
-            var str = '<table class="table table-bordered"> <tbody> '
-            "{%for row in data%}"
-                var temp_id= "{{row.Makine}}"
-                var temp_appServerType = "{{row.ApplicationServerTipi}}"
-                if (temp_id === id && appServerType == temp_appServerType) { 
-                "{%for column in detail_columns%}"
-                    str += '<tr>'
-                        + '<td>' + "{{column}}=" + "{{row[column] | trim}}" + '</td>'
-                        + '</tr>'
-                "{%endfor%}"
-                }
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+
+    /* Formatting function for row details - modify as you need */
+    function formatDetails(id, appServerType) {
+        var str = '<table class="table table-bordered"> <tbody> '
+        "{%for row in data%}"
+        var temp_id = "{{row.Makine}}"
+        var temp_appServerType = "{{row.ApplicationServerTipi}}"
+        if (temp_id === id && appServerType == temp_appServerType) {
+            "{%for column in detail_columns%}"
+            str += '<tr>'
+                + '<td>' + "{{column}}=" + "{{row[column] | trim}}" + '</td>'
+                + '</tr>'
             "{%endfor%}"
-            str+="</tbody> </table>"
-            // `d` is the original data object for the row
-            return str
         }
+        "{%endfor%}"
+        str += "</tbody> </table>"
+        // `d` is the original data object for the row
+        return str
+    }
 
-        $(document).ready(function() { 
-            const table = new DataTable('#main-datatable', {
+    $(document).ready(function () {
+        const table = new DataTable('#main-datatable', {
             // We can use columnDefs for applying styling to columns
             // columnDefs: [
             //     {
@@ -103,21 +105,21 @@
             // columnDefs: [{ width: 200, targets: "_all" }],
             // fixedColumns: true,
             dom: 'Brfltip',
-            
+
             buttons: {
                 buttons: [
-            {
-                extend: 'colvis', 
-                className: 'rounded-3'
-            },
-            {
-                extend: 'collection',
-                text: 'Export',
-                buttons: ['copy', 'excel', 'csv', 'pdf', 'print'],
-                className: 'ms-3 rounded-3'
-                
-            }
-            ]
+                    {
+                        extend: 'colvis',
+                        className: 'rounded-3'
+                    },
+                    {
+                        extend: 'collection',
+                        text: 'Export',
+                        buttons: ['copy', 'excel', 'csv', 'pdf', 'print'],
+                        className: 'ms-3 rounded-3'
+
+                    }
+                ]
 
             },
             columnDefs: [
@@ -135,38 +137,38 @@
                 }
             },
 
-            "initComplete": function(settings, json) {
-                    $('#main-div').show();
+            "initComplete": function (settings, json) {
+                $('#main-div').show();
 
-                     // Have Datatbles adjust is column widths after showing table
-                     $('#main-datatable').DataTable()
+                // Have Datatbles adjust is column widths after showing table
+                $('#main-datatable').DataTable()
                     .columns.adjust()
             }
-            
+
         });
-         
+
         $('#main-datatable tbody').on('click', 'td.details-control', function () {
-        var tr = $(this).parents('tr');
-        var row = table.row( tr );
+            var tr = $(this).parents('tr');
+            var row = table.row(tr);
 
 
-        
- 
-        if ( row.child.isShown() ) {
-            // This row is already open - close it
-            row.child.hide();
-            tr.removeClass('shown');
-        }
-        else {
-            // Open this row
-            hostname=row.data()[2]
-            appServerType=row.data()[3]
-            row.child(formatDetails(hostname,appServerType)).show();
-            tr.addClass('shown');
-        }
-        } );   
+
+
+            if (row.child.isShown()) {
+                // This row is already open - close it
+                row.child.hide();
+                tr.removeClass('shown');
+            }
+            else {
+                // Open this row
+                hostname = row.data()[2]
+                appServerType = row.data()[3]
+                row.child(formatDetails(hostname, appServerType)).show();
+                tr.addClass('shown');
+            }
+        });
     })
-    
-    
-    </script>
-    {% endblock %}
+
+
+</script>
+{% endblock %}
