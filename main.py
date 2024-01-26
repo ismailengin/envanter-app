@@ -73,10 +73,11 @@ def insert_query(hostname, servicenames):
     connection=get_db_connection()
 
     cursor = connection.cursor()
+    hostname = hostname.strip()
     
     for app in servicenames.split(","):
         print(app)
-        service_name,jvm_name,ortam,runtime = app.split(":")
+        service_name,jvm_name,ortam,runtime = [element.strip() for element in app.split(":")]
         
         ServiceNameDetailsTable = Table('SERVICENAMEDETAILS')
         AppOrtamTable = Table('APPORTAMTABLE')
@@ -293,7 +294,7 @@ def deneme():
     return render_template('chart.html',runtime_stats=runtime_stats)
 
 
-@app.route('/add_service', methods=['GET','POST'])
+@app.route('/add_service', methods=['POST'])
 def add_service():
     if request.method == 'POST':
         hostname= request.json['hostname']
