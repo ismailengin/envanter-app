@@ -11,7 +11,7 @@
 {% block content %}
 <div class="container-sm justify-content-center pb-5 pe-5 ps-5" >
     <div class="chart-container">
-    <canvas id="myChart"></canvas>
+    <canvas id="runtime_chart"></canvas>
     </div>
 </div>
 {% endblock %}
@@ -20,7 +20,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-  const ctx = document.getElementById('myChart');
+  const ctx = document.getElementById('runtime_chart');
 
   function extractString(input) {
         var match = input.match(/&#39;([^&#39;]+)&#39;/);
