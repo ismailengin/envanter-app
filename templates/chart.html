@@ -9,9 +9,10 @@
     </nav>
 
 {% block content %}
-<div class="container" >
-    <div class="chart-container" style="height: 50vh; width:80vh;">
+<div class="container-sm justify-content-center pb-5 pe-5 ps-5" >
+    <div class="chart-container">
     <canvas id="myChart"></canvas>
+    </div>
 </div>
 {% endblock %}
 
@@ -33,7 +34,7 @@
 
   var runtimes = []
   '{%for runtime in runtime_stats%}'
-  runtimes.push("{{runtime}}")
+    runtimes.push("{{runtime}}")
   '{%endfor%}'
   console.log(runtimes.map(row=> row=row.split(',')[0]))
   new Chart(ctx, {
@@ -46,7 +47,7 @@
     },
     options: {
       responsive:true,
-      maintainAspectRation:false
+      maintainAspectRatio:false
     }
   });
 </script>

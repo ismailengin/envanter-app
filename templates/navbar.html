@@ -1,15 +1,13 @@
-<nav class="navbar navbar-expand-sm navbar-light bg-light">
-    <div class="container-fluid">
-    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-        <li class="nav-item">
-          <a class="nav-link active" aria-current="page" href="{{ url_for('index')}}">Home</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link active" aria-current="page" href="{{ url_for('deneme')}}">Chart</a>
-          </li>
-    </ul>
-    <ul class="navbar ms-auto me-5">
-        <a href="{{ url_for('logout') }}" class="btn btn-primary">Logout</a>
-      </ul>
-    </div>
-</nav>
+<div class="container-xl pe-5 ps-5">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item">
+                <a class="nav-link active" aria-current="page" href="{{ url_for('index')}}">Home</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link active" aria-current="page" href="{{ url_for('deneme')}}">Chart</a>
+            </li>
+        </ul>
+            <a href="{{ url_for('logout') }}" class="btn btn-primary mt-2">Logout</a>
+    </nav>
+</div>
