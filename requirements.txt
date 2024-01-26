@@ -1,2 +1,3 @@
 Flask==3.0.0
 pyodbc==5.0.1
+PyPika==0.48.9

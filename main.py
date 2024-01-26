@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 import pyodbc
 from datetime import timedelta
+from pypika import Table, Query
 import os
 
 app = Flask(__name__)
@@ -66,6 +67,102 @@ def get_all_columns(table_name):
 
     return columns
 
+
+def insert_query(hostname, servicenames):
+
+    connection=get_db_connection()
+
+    cursor = connection.cursor()
+    
+    for app in servicenames.split(","):
+        print(app)
+        service_name,jvm_name,ortam,runtime = app.split(":")
+        
+        ServiceNameDetailsTable = Table('SERVICENAMEDETAILS')
+        AppOrtamTable = Table('APPORTAMTABLE')
+        OperationPathsTable = Table('OPERATIONSPATHS')
+
+        servicename_details_data = {
+                'HostName': hostname,
+                'ServiceName': service_name,
+                'ServiceType': ortam,
+                'InstanceName': 'STDJVMS',
+                'J2EE': 0,
+                'AppServer': 'Others',
+                'AppServerVersion': None,
+                'AppProfile': None,
+                'AppFileSystem': "/fbapp/hebele",
+                'AppInstPath': None,
+                'SuccessEmailGroups': None,
+                'FailEmailGroups': None,
+                'HealthCheckCount': None,
+                'HealthCheckSleepTime': None,
+                'Company': None,
+                'MasterAddress': None,
+                'ExtraLogPattern': None,
+                'ExtraLogDirectory': None,
+                'AppServerType': runtime
+            }
+
+        # # Construct the insert query
+        insert_query = Query.into(ServiceNameDetailsTable).columns(*servicename_details_data.keys()).insert(*servicename_details_data.values())
+
+        # # Execute the insert query
+        cursor.execute(str(insert_query))
+
+        # Commit the changes
+        apportamtable_data = {
+            'ServiceType': 'SampleType',
+            'ServiceName': service_name+ortam,
+            'Hostname': hostname,
+            'ApplicationType': service_name,
+            'ApplicationName': "{}({})".format(jvm_name, hostname),
+            'J2EE': 0,
+            'LBServiceName': 'SampleLBName',
+            'OperasyonDurumu': 0,
+            'generaltype': 'STDJVMS',
+            'WebContainerPort': '8080',
+            'LBServiceGroup': None,
+            'DeployStage': None,
+            'HealthCheckRequest': None,
+            'HealthCheckResponse': None,
+            'HealthCheckProtocol': None,
+            'ProcessSearchName': 'SampleProcessName',
+            'step': None,
+            'kesintiservisismi': None,
+            'istirakadi': None
+        }
+
+        # Construct the insert query
+        insert_query = Query.into(AppOrtamTable).columns(
+            'ServiceType', 'ServiceName', 'Hostname', 'ApplicationType', 'ApplicationName', 'J2EE',
+            'LBServiceName', 'OperasyonDurumu', 'generaltype', 'WebContainerPort', 'LBServiceGroup',
+            'DeployStage', 'HealthCheckRequest', 'HealthCheckResponse', 'HealthCheckProtocol',
+            'ProcessSearchName', 'step', 'kesintiservisismi', 'istirakadi'
+        ).insert(*apportamtable_data.values())
+        cursor.execute(str(insert_query))
+        id = cursor.execute("SELECT @@Identity").fetchone()[0]
+        print(id)
+
+        # Sample data
+
+
+
+        if runtime == 'WLP':
+            WLP_op_query = Query.into(OperationPathsTable).columns('Appid', 'Operation', 'OperationScript', 'ServerOperationScript').insert(
+                (id, 'start', '/fbapp/scripts/bin/appctl {} start {}'.format(service_name+ortam, jvm_name), '/WLP/wlp/bin/server start {}'.format(jvm_name)),
+                (id, 'stop', '/fbapp/scripts/bin/appctl {} stop {}'.format(service_name+ortam, jvm_name), '/WLP/wlp/bin/server stop {}'.format(jvm_name)),
+                (id, 'status', '/fbapp/scripts/bin/appctl {} status {}'.format(service_name+ortam, jvm_name), '/fbapp/scripts/bin/appctl {} status {}'.format(service_name+ortam,  jvm_name)),
+                (id, 'dump', '/fbapp/scripts/bin/appctl {} dump {}'.format(service_name+ortam, jvm_name), '/WLP/WLP/bin/server javadump {} --include=thread'.format(jvm_name)),
+                (id, 'threaddump', '/fbapp/scripts/bin/appctl {} threaddump {}'.format(service_name+ortam, jvm_name), '/WLP/WLP/bin/server javadump {} --include=thread'.format(jvm_name)),
+                (id, 'heapdump', '/fbapp/scripts/bin/appctl {} heapdump {}'.format(service_name+ortam, jvm_name), '/WLP/WLP/bin/server javadump {} --include=heap'.format(jvm_name)),
+                (id, 'alldump', '/fbapp/scripts/bin/appctl {} alldump {}'.format(service_name+ortam, jvm_name), '/WLP/WLP/bin/server javadump {} --include=thread,heap,system'.format(jvm_name)))
+
+            cursor.execute(str(WLP_op_query))
+
+    connection.commit()
+    print("Data inserted successfully")
+    
 def get_data(table_name):
  
     connection=get_db_connection()
@@ -194,6 +291,15 @@ def deneme():
     runtime_stats=get_runtime_stats()
     print(type(runtime_stats))
     return render_template('chart.html',runtime_stats=runtime_stats)
+
+
+@app.route('/add_service', methods=['GET','POST'])
+def add_service():
+    if request.method == 'POST':
+        hostname= request.json['hostname']
+        servicenames= request.json['servicenames']
+        insert_query(hostname,servicenames)
+        return "Succesfully added entry"
 
 if __name__ == '__main__':
     app.run(debug=True)
