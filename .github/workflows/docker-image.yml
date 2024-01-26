@@ -12,7 +12,7 @@ jobs:
 
     runs-on: ubuntu-latest
     env:
-      IMG_NAME: "flask-inventory"
+      IMG_NAME: "ismailengin/flask-inventory"
     
     steps:
     - uses: actions/checkout@v3
