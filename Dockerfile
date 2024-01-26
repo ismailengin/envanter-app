@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM laudio/pyodbc
+FROM docker.io/laudio/pyodbc
 
 # Set the working directory to /app
 WORKDIR /app
