@@ -287,11 +287,14 @@ def logout():
     session.pop('username', None)
     return redirect(url_for('index'))
 
-@app.route('/test')
+@app.route('/chart')
 def deneme():
-    runtime_stats=get_runtime_stats()
-    print(type(runtime_stats))
-    return render_template('chart.html',runtime_stats=runtime_stats)
+    if 'username' in session:
+        runtime_stats=get_runtime_stats()
+        print(type(runtime_stats))
+        return render_template('chart.html',runtime_stats=runtime_stats)
+    else:
+        return redirect(url_for('login'))
 
 
 @app.route('/add_service', methods=['POST'])
