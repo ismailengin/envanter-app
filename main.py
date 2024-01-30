@@ -110,11 +110,16 @@ def insert_query(hostname, servicenames):
 
         # # Execute the insert query
         cursor.execute(str(insert_query))
+        
+        if runtime == 'WLP':
+            process_search_name = "/WLP/wlp/bin/tools/ws-server.jar {}".format(jvm_name)
+        else:
+            process_search_name = "SampleProcessName"
 
         # Commit the changes
         apportamtable_data = {
-            'ServiceType': 'SampleType',
-            'ServiceName': service_name+ortam,
+            'ServiceType': ortam,
+            'ServiceName': service_name,
             'Hostname': hostname,
             'ApplicationType': service_name,
             'ApplicationName': "{}({})".format(jvm_name, hostname),
@@ -128,7 +133,7 @@ def insert_query(hostname, servicenames):
             'HealthCheckRequest': None,
             'HealthCheckResponse': None,
             'HealthCheckProtocol': None,
-            'ProcessSearchName': 'SampleProcessName',
+            'ProcessSearchName': process_search_name.strip(),
             'step': None,
             'kesintiservisismi': None,
             'istirakadi': None
