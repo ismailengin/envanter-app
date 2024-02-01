@@ -108,12 +108,21 @@ def insert_query(hostname, servicenames):
             'AppServerType': runtime
         }
 
-        # # Construct the insert query
-        insert_query = Query.into(ServiceNameDetailsTable).columns(
-            *servicename_details_data.keys()).insert(*servicename_details_data.values())
+        select_servicenamedetails_query = Query.from_(ServiceNameDetailsTable).select(
+            ServiceNameDetailsTable.HostName).where(
+            (ServiceNameDetailsTable.HostName == hostname) & (ServiceNameDetailsTable.ServiceName == service_name) &
+            (ServiceNameDetailsTable.ServiceType == ortam))
 
-        # # Execute the insert query
-        cursor.execute(str(insert_query))
+        cursor.execute(str(select_servicenamedetails_query))
+        row = cursor.fetchone()
+        if not row:
+            print("hello world")
+            # # Construct the insert query
+            insert_query = Query.into(ServiceNameDetailsTable).columns(
+                *servicename_details_data.keys()).insert(*servicename_details_data.values())
+
+            # # Execute the insert query
+            cursor.execute(str(insert_query))
 
         if runtime == 'WLP':
             process_search_name = "/WLP/wlp/bin/tools/ws-server.jar {}".format(
@@ -319,7 +328,6 @@ def logout():
 def deneme():
     if 'username' in session:
         runtime_stats = get_runtime_stats()
-        print(type(runtime_stats))
         return render_template('chart.html', runtime_stats=runtime_stats)
     else:
         return redirect(url_for('login'))
