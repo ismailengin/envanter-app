@@ -285,8 +285,7 @@ def index():
 
         selected_columns = ["ServisTipi", "ServisAdı", "Makine",
                             "ApplicationServerTipi", "JavaTipi", "UygulamaKritiklik", "UygulamaTipi"]
-        detail_columns = ["ostip", "JavaVersion",
-                          "dependecyJarTarama", "AAMEnabled", "ApplicationServerPath"]
+        detail_columns = ["ostip", "JavaVersion", "AAMEnabled", "ApplicationServerPath"]
 
         all_columns = get_all_columns(envanter_table_name)
         return render_template(

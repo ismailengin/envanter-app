@@ -19,6 +19,8 @@
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
 
+<link href=" https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css " rel="stylesheet">
+
 
 
 <style>
@@ -50,6 +52,7 @@
                 {% for column in selected_columns %}
                 <th>{{ column }}</th>
                 {% endfor %}
+                <th>DependencyJarTarama</th>
             </tr>
         </thead>
         <tbody>
@@ -61,6 +64,15 @@
                 {%for value in selected_columns%}
                 <td>{{row[value]}}</td>
                 {% endfor %}
+                {%if row.dependecyJarTarama == "0"%}
+                <td>
+                    <h4><i style="color: red;" class="bi bi-x"></i></h4>
+                </td>
+                {%else%}
+                <td>
+                    <h4><i style="color: green;" class="bi bi-check"></i></h4>
+                </td>
+                {%endif%}
             </tr>
             {% endfor %}
         </tbody>
