@@ -1,13 +1,26 @@
 <div class="container-xl pe-5 ps-5">
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-5">
+        <div class="navbar-brand ms-2" href="#">MWBE</div>
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
             <li class="nav-item">
-                <a class="nav-link active" aria-current="page" href="{{ url_for('index')}}">Home</a>
+                <a class="nav-link link" aria-current="page" href="{{ url_for('index')}}">Envanter</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link active" aria-current="page" href="{{ url_for('deneme')}}">Chart</a>
+                <a class="nav-link link" aria-current="page" href="{{ url_for('deneme')}}">Runtime Chart</a>
             </li>
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle link" href="#" id="navbarDarkDropdownMenuLink" role="button"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                    Useful Links
+                </a>
+                <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="navbarDarkDropdownMenuLink">
+                    <li><a class="dropdown-item" href="#">Action</a></li>
+                    <li><a class="dropdown-item" href="#">Another action</a></li>
+                    <li><a class="dropdown-item" href="#">Something else here</a></li>
+                </ul>
         </ul>
-        <a href="{{ url_for('logout') }}" class="btn btn-primary mt-2 me-2">Logout</a>
+        <div class="d-flex">
+            <a href="{{ url_for('logout') }}" class="btn btn-primary mt-3 me-2 mb-2">Logout</a>
+        </div>
     </nav>
 </div>
