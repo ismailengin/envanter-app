@@ -75,15 +75,15 @@
 
 
     /* Formatting function for row details - modify as you need */
-    function formatDetails(id, appServerType) {
+    function formatDetails(hostname, appServerType) {
         var str = '<table class="table table-bordered"> <tbody> '
         "{%for row in data%}"
-        var temp_id = "{{row.Makine}}"
+        var temp_hostname = "{{row.Makine}}"
         var temp_appServerType = "{{row.ApplicationServerTipi}}"
-        if (temp_id === id && appServerType == temp_appServerType) {
+        if (temp_hostname === hostname && appServerType == temp_appServerType) {
             "{%for column in detail_columns%}"
             str += '<tr>'
-                + '<td>' + "{{column}}=" + "{{row[column] | trim}}" + '</td>'
+                + '<td>' + "<b>{{column|capitalize}}</b>=" + "{{row[column] | trim}}" + '</td>'
                 + '</tr>'
             "{%endfor%}"
         }
