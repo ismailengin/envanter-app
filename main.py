@@ -259,7 +259,9 @@ def get_runtime_stats():
 @app.route('/')
 def index():
 
-    envanter_table_name = "BackendEnvanter"
+    if 'username' in session:
+
+        envanter_table_name = "BackendEnvanter"
     # for key in request.form.keys():
     #     values = request.form.getlist(key)
     #     print("Key", key, "Value:", values)
@@ -270,15 +272,14 @@ def index():
     # if not selected_columns:
     #     selected_columns = ['*']
 
-    columns, data = get_data(envanter_table_name)
+        columns, data = get_data(envanter_table_name)
 
-    selected_columns = ["ServisTipi", "ServisAdı", "Makine",
-                        "ApplicationServerTipi", "JavaTipi", "UygulamaKritiklik", "UygulamaTipi"]
-    detail_columns = ["ostip", "JavaVersion",
-                      "dependecyJarTarama", "AAMEnabled", "ApplicationServerPath"]
+        selected_columns = ["ServisTipi", "ServisAdı", "Makine",
+                            "ApplicationServerTipi", "JavaTipi", "UygulamaKritiklik", "UygulamaTipi"]
+        detail_columns = ["ostip", "JavaVersion",
+                          "dependecyJarTarama", "AAMEnabled", "ApplicationServerPath"]
 
-    all_columns = get_all_columns(envanter_table_name)
-    if 'username' in session:
+        all_columns = get_all_columns(envanter_table_name)
         return render_template(
             'index.html', username=session['username'],
             all_columns=all_columns, selected_columns=selected_columns, columns=columns, detail_columns=detail_columns,
