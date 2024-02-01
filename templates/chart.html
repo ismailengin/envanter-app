@@ -21,7 +21,8 @@
     {% if runtime[0]|capitalize in ['Liberty','Tomcat','Wasnd','Standalone']%}
     <div class="col">
       <div>
-        <img src="/static/{{runtime[0]|lower}}.png" class="w-25 h-30 me-2">{{runtime[0]|capitalize}} : {{runtime[1]}}
+        <img src="/static/{{runtime[0]|lower}}.png" class="w-25 h-30 me-2"><b>{{runtime[0]|capitalize}} </b> :
+        {{runtime[1]}}
       </div>
     </div>
     {%endif%}
@@ -63,7 +64,10 @@
       plugins: {
         title: {
           text: "Runtime Dağılımı",
-          display: true
+          display: true,
+          font: {
+            size: 20
+          }
         },
       },
       responsive: true,
