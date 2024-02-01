@@ -19,7 +19,7 @@
   <div class="row">
     {%for runtime in runtime_stats%}
     {% if runtime[0]|capitalize in ['Liberty','Tomcat','Wasnd','Standalone']%}
-    <div class="col">
+    <div class="col border m-2 p-3">
       <div>
         <img src="/static/{{runtime[0]|lower}}.png" class="w-25 h-30 me-2"><b>{{runtime[0]|capitalize}} </b> :
         {{runtime[1]}}
