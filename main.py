@@ -85,6 +85,7 @@ def insert_query(hostname, servicenames):
         ServiceNameDetailsTable = Table('SERVICENAMEDETAILS')
         AppOrtamTable = Table('APPORTAMTABLE')
         OperationPathsTable = Table('OPERATIONSPATHS')
+        BackendEnvanterTable = Table('BackendEnvanter')
 
         servicename_details_data = {
             'HostName': hostname,
@@ -108,6 +109,26 @@ def insert_query(hostname, servicenames):
             'AppServerType': runtime
         }
 
+        backendenvanter_data = {
+            'ServisTipi':  ortam,
+            'ServisAdı': service_name,
+            'Makine': hostname,
+            'ApplicationServerTipi': 'Liberty' if runtime == 'WLP' else runtime,
+            'AppServerVersion': None,
+            'ApplicationServerPath': '/WLP' if runtime == 'WLP' else None,
+            'JavaTipi': None,
+            'JavaPath': None,
+            'UygulamaTipi': None,
+            'ostip': None,
+            'JavaVersion': None,
+            'UygulamaKritiklik': None,
+            'uygulamaversion': None,
+            'uygulamaPath': None,
+            'ownercompany': None,
+            'AAMEnabled': None,
+            'dependecyJarTarama': 1
+        }
+
         select_servicenamedetails_query = Query.from_(ServiceNameDetailsTable).select(
             ServiceNameDetailsTable.HostName).where(
             (ServiceNameDetailsTable.HostName == hostname) & (ServiceNameDetailsTable.ServiceName == service_name) &
@@ -115,11 +136,27 @@ def insert_query(hostname, servicenames):
 
         cursor.execute(str(select_servicenamedetails_query))
         row = cursor.fetchone()
+
         if not row:
             print("hello world")
             # # Construct the insert query
             insert_query = Query.into(ServiceNameDetailsTable).columns(
                 *servicename_details_data.keys()).insert(*servicename_details_data.values())
+
+            # # Execute the insert query
+            cursor.execute(str(insert_query))
+
+        select_backendenvanter_query = Query.from_(BackendEnvanterTable).select(
+            BackendEnvanterTable.Makine).where(
+            (BackendEnvanterTable.ServisTipi == ortam) & (BackendEnvanterTable.ServisAdı == service_name) &
+            (BackendEnvanterTable.Makine == hostname))
+
+        cursor.execute(str(select_backendenvanter_query))
+        envanter_row = cursor.fetchone()
+
+        if not envanter_row:
+            insert_query = Query.into(BackendEnvanterTable).columns(
+                *backendenvanter_data.keys()).insert(*backendenvanter_data.values())
 
             # # Execute the insert query
             cursor.execute(str(insert_query))
