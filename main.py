@@ -212,6 +212,8 @@ def insert_query(hostname, servicenames):
                  '/WLP/wlp/bin/server stop {}'.format(jvm_name)),
                 (id, 'status', '/fbapp/scripts/bin/appctl {} status {}'.format(service_name + ortam, jvm_name),
                  '/fbapp/scripts/bin/appctl {} status {}'.format(service_name + ortam, jvm_name)),
+                (id, 'restart', '/fbapp/scripts/bin/appctl {} restart {}'.format(service_name + ortam, jvm_name),
+                 '/fbapp/scripts/bin/appctl {} saferestart {}'.format(service_name + ortam, jvm_name)),
                 (id, 'dump', '/fbapp/scripts/bin/appctl {} dump {}'.format(service_name + ortam, jvm_name),
                  '/WLP/WLP/bin/server javadump {} --include=thread'.format(jvm_name)),
                 (id, 'threaddump', '/fbapp/scripts/bin/appctl {} threaddump {}'.format(
