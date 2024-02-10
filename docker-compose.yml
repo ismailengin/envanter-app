@@ -4,6 +4,6 @@ services:
     hostname: envanter
     image: localhost/envanter-app
     environment:
-      - DB_SERVER=10.89.2.3
+      - DB_SERVER=localhost
     ports:
       - 5000:5000
