@@ -164,6 +164,8 @@ def insert_query(hostname, servicenames):
         if runtime == 'WLP':
             process_search_name = "/WLP/wlp/bin/tools/ws-server.jar {}".format(
                 jvm_name)
+        elif runtime == 'Tomcat':
+            process_search_name = '/Tomcat/{}/temp org.apache.catalina.startup.Bootstrap.start'.format(service_name)
         else:
             process_search_name = "SampleProcessName"
 
@@ -204,7 +206,7 @@ def insert_query(hostname, servicenames):
         # Sample data
 
         if runtime == 'WLP':
-            WLP_op_query = Query.into(OperationPathsTable).columns(
+            op_query = Query.into(OperationPathsTable).columns(
                 'Appid', 'Operation', 'OperationScript', 'ServerOperationScript').insert(
                 (id, 'start', '/fbapp/scripts/bin/appctl {} start {}'.format(service_name + ortam, jvm_name),
                  '/WLP/wlp/bin/server start {}'.format(jvm_name)),
@@ -224,7 +226,31 @@ def insert_query(hostname, servicenames):
                 (id, 'alldump', '/fbapp/scripts/bin/appctl {} alldump {}'.format(service_name + ortam, jvm_name),
                  '/WLP/WLP/bin/server javadump {} --include=thread,heap,system'.format(jvm_name)))
 
-            cursor.execute(str(WLP_op_query))
+        elif runtime == 'Tomcat':
+            op_query = Query.into(OperationPathsTable).columns(
+                'Appid', 'Operation', 'OperationScript', 'ServerOperationScript').insert(
+                (id, 'start', '/fbapp/scripts/bin/appctl {} start {}'.format(service_name + ortam, jvm_name),
+                 '/Tomcat/{}/bin/startup.sh'.format(service_name)),
+                (id, 'stop', '/fbapp/scripts/bin/appctl {} stop {}'.format(service_name + ortam, jvm_name),
+                 '/Tomcat/{}/bin/shutdown.sh'.format(service_name)),
+                (id, 'status', '/fbapp/scripts/bin/appctl {} status {}'.format(service_name + ortam, jvm_name),
+                 '/fbapp/scripts/bin/appctl {} status {}'.format(service_name + ortam, jvm_name)),
+                (id, 'restart', '/fbapp/scripts/bin/appctl {} restart {}'.format(service_name + ortam, jvm_name),
+                 '/fbapp/scripts/bin/appctl {} saferestart {}'.format(service_name + ortam, jvm_name)))
+
+        elif runtime == 'Standalone':
+            op_query = Query.into(OperationPathsTable).columns(
+                'Appid', 'Operation', 'OperationScript', 'ServerOperationScript').insert(
+                (id, 'start', '/fbapp/scripts/bin/appctl {} start {}'.format(service_name + ortam, jvm_name),
+                 '/fbapp/scripts/bin/appctl {} start {}'.format(service_name + ortam, jvm_name)),
+                (id, 'stop', '/fbapp/scripts/bin/appctl {} stop {}'.format(service_name + ortam, jvm_name),
+                 '/fbapp/scripts/bin/appctl {} stop {}'.format(service_name + ortam, jvm_name)),
+                (id, 'status', '/fbapp/scripts/bin/appctl {} status {}'.format(service_name + ortam, jvm_name),
+                 '/fbapp/scripts/bin/appctl {} status {}'.format(service_name + ortam, jvm_name)),
+                (id, 'restart', '/fbapp/scripts/bin/appctl {} restart {}'.format(service_name + ortam, jvm_name),
+                 '/fbapp/scripts/bin/appctl {} saferestart {}'.format(service_name + ortam, jvm_name)))
+
+        cursor.execute(str(op_query))
 
     connection.commit()
     print("Data inserted successfully")
