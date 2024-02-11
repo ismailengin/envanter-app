@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 import pyodbc
 from datetime import timedelta
-from pypika import Table, Query
+from pypika import Table, Query, Schema, functions as fn
 import os
 
 app = Flask(__name__)
@@ -57,9 +57,12 @@ def get_all_columns(table_name):
     connection = get_db_connection()
     cursor = connection.cursor()
 
+    info_schema = Schema('INFORMATION_SCHEMA')
     # Execute a query to get all column names for the specified table
-    query = f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '{table_name}'"
-    cursor.execute(query)
+    # query = f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '{table_name}'"
+    query = Query.from_(info_schema.COLUMNS).select('COLUMN_NAME').where(info_schema.COLUMNS.TABLE_NAME == table_name)
+    print(str(query))
+    cursor.execute(str(query))
 
     # Fetch all column names
     columns = [row.COLUMN_NAME for row in cursor.fetchall()]
@@ -260,6 +263,7 @@ def get_data(table_name):
 
     connection = get_db_connection()
     cursor = connection.cursor()
+    table = Query.Table(table_name)
 
     # Calculate the offset based on the current page
     # offset = (page - 1) * entries_per_page
@@ -278,9 +282,10 @@ def get_data(table_name):
     # query = f'SELECT {", ".join(selected_columns)} FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH NEXT {entries_per_page} ROWS ONLY'
     # query = f'SELECT {", ".join(selected_columns)} FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH FIRST {entries_per_page} ROWS ONLY'
     # query = f'SELECT {", ".join(selected_columns)} FROM AppOrtamTable ORDER BY id OFFSET {offset} ROWS FETCH NEXT {entries_per_page} ROWS ONLY'
-    query = f'SELECT * from {table_name}'
+    # query = f'SELECT * from {table_name}'
+    query = Query.from_(table).select('*')
 
-    cursor.execute(query)
+    cursor.execute(str(query))
 
     # num_pages = (total_rows // entries_per_page) + (1 if total_rows % entries_per_page > 0 else 0)
 
@@ -304,8 +309,11 @@ def get_runtime_stats():
     # offset = (page - 1) * entries_per_page
 
     # Execute a query to get the total number of rows
-    count_query = 'select ApplicationServerTipi, COUNT(ApplicationServerTipi) AS ApplicationServerTipiCount from BackendEnvanter group by ApplicationServerTipi'
-    cursor.execute(count_query)
+    # count_query = 'select ApplicationServerTipi, COUNT(ApplicationServerTipi) AS ApplicationServerTipiCount from BackendEnvanter group by ApplicationServerTipi'
+    BackendEnvanterTable = Table('BackendEnvanter')
+    count_query = Query.from_(BackendEnvanterTable).select(BackendEnvanterTable.ApplicationServerTipi, fn.Count(
+        BackendEnvanterTable.ApplicationServerTipi)).groupby(BackendEnvanterTable.ApplicationServerTipi)
+    cursor.execute(str(count_query))
     # total_rows = cursor.fetchone()[0]
 
     # Execute a query to get data from your table (replace 'your_table' with your actual table name)
