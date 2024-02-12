@@ -47,6 +47,7 @@ def get_db_connection():
         f'DATABASE={db_config["database"]};'
         f'UID={db_config["user"]};'
         f'PWD={db_config["password"]};'
+        f'TrustServerCertificate=yes'
     )
 
     return connection
