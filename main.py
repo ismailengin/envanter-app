@@ -39,7 +39,7 @@ def get_db_connection():
         driver = "SQL Server"
 
     else:
-        driver = "ODBC Driver 17 for SQL Server"
+        driver = "ODBC Driver 18 for SQL Server"
 
     connection = pyodbc.connect(
         f'DRIVER={driver};'
