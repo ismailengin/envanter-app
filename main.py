@@ -36,7 +36,7 @@ entries_per_page = 10
 def get_db_connection():
 
     if (os.name == "nt"):
-        driver = "SQL Server"
+        driver = "SQL Server    "
 
     else:
         driver = "ODBC Driver 18 for SQL Server"
@@ -79,7 +79,7 @@ def insert_query(hostname, servicenames):
     connection = get_db_connection()
 
     cursor = connection.cursor()
-    hostname = hostname.strip()
+    hostname = hostname.strip().split('.')[0]
 
     for app in servicenames.split(","):
         print(app)
