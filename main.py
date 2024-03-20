@@ -74,6 +74,20 @@ def get_all_columns(table_name):
     return columns
 
 
+def update_os_version(hostname, os_version):
+    connection = get_db_connection()
+
+    cursor = connection.cursor()
+    hostname = hostname.strip().split('.')[0]
+    BackendEnvanterTable = Table('BackendEnvanter')
+
+    q = Query.update(BackendEnvanterTable).set('OsVersion', os_version).where(BackendEnvanterTable.Makine == hostname)
+    print(q)
+    cursor.execute(str(q))
+    connection.commit()
+    print("Successfully added entry for ", hostname)
+
+
 def insert_query(hostname, servicenames):
 
     connection = get_db_connection()
@@ -412,6 +426,15 @@ def add_service():
         hostname = request.json['hostname']
         servicenames = request.json['servicenames']
         insert_query(hostname, servicenames)
+        return "Succesfully added entry"
+
+
+@app.route('/update_os_version', methods=['POST'])
+def update_os_handler():
+    if request.method == 'POST':
+        hostname = request.json['hostname']
+        os_version = request.json['os_version']
+        update_os_version(hostname, os_version)
         return "Succesfully added entry"
 
 
