@@ -97,7 +97,7 @@ def insert_query(hostname, servicenames):
             'ServiceType': ortam,
             'InstanceName': 'STDJVMS',
             'J2EE': 0,
-            'AppServer': 'Others',
+            'AppServer': 'Others' if runtime != "Standalone" else 'Standalone',
             'AppServerVersion': None,
             'AppProfile': None,
             'AppFileSystem': "/fbapp/hebele",
