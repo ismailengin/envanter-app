@@ -81,7 +81,7 @@
 
         function buildHierarchy(groups) {
             const groupMap = {};
-
+            const childGroups = [];
             // Create a map of all groups
             groups.forEach(group => {
                 const groupName = group['Grup ADI'];
@@ -97,12 +97,13 @@
                 if (childGroup) {
                     childGroup.map(childGroup => {
                         groupMap[groupName].children.push(groupMap[childGroup]);
-                        delete groupMap[childGroup]; // Remove child from the main map to avoid duplication
+                        childGroups.push(childGroup); // Store child groups for later deletion
                     });
-                    // groupMap[groupName].children.push(groupMap[childGroup]);
-
                 }
             });
+            childGroups.forEach(childGroup => {
+                delete groupMap[childGroup]; // Remove child groups from the main map
+            })
             return groupMap; // Return the hierarchy as a dictionary
         }
 
