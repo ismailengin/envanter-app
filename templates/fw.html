@@ -1,0 +1,171 @@
+{%extends 'layout.html' %}
+{% block head %}
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive DataTables</title>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <style>
+        .details-row {
+            display: none;
+        }
+
+        .toggle-details {
+            cursor: pointer;
+            color: blue;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+{% endblock %}
+
+{% block content %}
+
+<div id="main-div" class="container-sm justify-content-center pb-5 pe-5 ps-5">
+    <table id="dataTable" class="display" style="width:100%">
+        <thead>
+            <tr>
+                <th>Group Name</th>
+                <th>IP</th>
+                <th>Actions</th>
+                <th style="display: none;">Extn.</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function () {
+        fetch('static/samplefw.txt')
+            .then(response => response.text())
+            .then(data => {
+                const groups = parseGroups(data);
+                const tableData = buildHierarchy(groups);
+                populateTable(Object.values(tableData));
+            });
+
+        function parseGroups(data) {
+            const groups = [];
+            const rawObjects = data.split('=====').map(obj => obj.trim()).filter(obj => obj);
+
+            rawObjects.forEach(raw => {
+                const lines = raw.split('\n');
+                const group = {};
+                lines.forEach(line => {
+                    const entries = line.split(',').map(entry => entry.trim());
+                    entries.forEach(entry => {
+                        const [key, value] = entry.split(':').map(part => part.trim());
+                        if (key && value) {
+                            if (!group[key]) {
+                                group[key] = [];
+                            }
+                            if (key == 'Grup ADI') {
+                                group[key] = value.replace(/^"|"$/g, ''); // Remove quotes if present
+                            } else {
+                                group[key].push(value.replace(/^"|"$/g, '')); // Remove quotes if present
+                            }
+                        }
+                    });
+                });
+                groups.push(group);
+            });
+            return groups;
+        }
+
+        function buildHierarchy(groups) {
+            const groupMap = {};
+
+            // Create a map of all groups
+            groups.forEach(group => {
+                const groupName = group['Grup ADI'];
+                groupMap[groupName] = { ...group, children: [] };
+            });
+
+            console.log(groupMap);
+
+            // Link child groups to their parents
+            groups.forEach(group => {
+                const groupName = group['Grup ADI'];
+                const childGroup = group['Diger Obje Adi'];
+                if (childGroup) {
+                    childGroup.map(childGroup => {
+                        groupMap[groupName].children.push(groupMap[childGroup]);
+                        delete groupMap[childGroup]; // Remove child from the main map to avoid duplication
+                    });
+                    // groupMap[groupName].children.push(groupMap[childGroup]);
+
+                }
+            });
+            return groupMap; // Return the hierarchy as a dictionary
+        }
+
+        function populateTable(data, parent = null) {
+            const tableBody = $('#dataTable tbody');
+            data.forEach(item => {
+                const rowId = `row-${Math.random().toString(36).substr(2, 9)}`;
+                childData = item.children ? item.children : [];
+                if (childData.length > 0) {
+                    item.child = childData.map(child => {
+                        return `<div>${child['Grup ADI']} --- ${child['IP'].join(', ')}</div>`;
+                    });
+                } else {
+                    item.child = null;
+                }
+                const row = $(`
+                        <tr class="group-row" data-row-id="${rowId}">
+                            <td>${item['Grup ADI']}</td>
+                            <td>${item['IP'] ? item['IP'].join(', ') : ''}</td>
+                            <td>
+                                ${item.children && item.children.length > 0 ? '<span class="toggle-details" data-target="' + rowId + '">Expand</span>' : ''}
+                            </td>
+                            <td style="display:none">${item.child}  </td>
+                        </tr>
+                    `);
+
+                tableBody.append(row);
+            });
+
+            const table = new DataTable('#dataTable', {
+                // columns: [
+                //     { title: "Group Name", data: "Grup ADI" },
+                //     { title: "IP", data: "IP" },
+                //     // { title: "Extn.", data: "extn", defaultContent: "", visible: false }
+                // ]
+            });
+
+            // Add toggle functionality
+            $('#dataTable').on('click', '.toggle-details', function () {
+                var tr = $(this).parents('tr');
+                var row = table.row(tr);
+
+
+
+
+                if (row.child.isShown()) {
+                    // This row is already open - close it
+                    row.child.hide();
+                    tr.removeClass('shown');
+                }
+                else {
+                    // Open this row
+                    const key = row.data()[0];
+                    console.log(row.data());
+                    const matchingElements = data.filter(item => item['Grup ADI'] === key);
+                    const childDetails = matchingElements[0].children.map(child => {
+                        return `<div>${child['Grup ADI']} --- ${child['IP'].join(', ')}</div>`;
+                    }).join('');
+                    row.child(childDetails).show();
+                    tr.addClass('shown');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

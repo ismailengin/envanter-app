@@ -1,0 +1,10 @@
+Grup ADI: foo
+Host Obje Adi: "hebele-hubele", IP: 1.1.1.1, Aciklama: N/A
+Host Obje Adi: "hebele-hubele", IP: 1.1.2.2, Aciklama: N/A
+==============================
+Grup ADI: foo-glb
+Diger Obje Adi: bar, Tipi:
+================================
+Grup ADI: bar
+Host Obje Adi: "hebele-hubele", IP: 123.232.232.232, Aciklama: N/A
+Host Obje Adi: "hebele-hubele", IP: 10.10.101.1, Aciklama: N/A

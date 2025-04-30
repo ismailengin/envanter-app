@@ -8,7 +8,6 @@ app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
-
 # Replace these with your MSSQL database credentials
 db_config = {
     'server': os.environ.get('DB_SERVER', 'localhost'),
@@ -36,7 +35,7 @@ entries_per_page = 10
 def get_db_connection():
 
     if (os.name == "nt"):
-        driver = "SQL Server    "
+        driver = "SQL Server"
 
     else:
         driver = "ODBC Driver 18 for SQL Server"
@@ -416,6 +415,14 @@ def deneme():
     if 'username' in session:
         runtime_stats = get_runtime_stats()
         return render_template('chart.html', runtime_stats=runtime_stats)
+    else:
+        return redirect(url_for('login'))
+
+
+@app.route('/fw')
+def firewall():
+    if 'username' in session:
+        return render_template('fw.html')
     else:
         return redirect(url_for('login'))
 
