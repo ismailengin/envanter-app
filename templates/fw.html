@@ -16,7 +16,7 @@
         <tbody>
             {% for group in groups %}
             <tr data-id="{{ group.name }}">
-                <td>{{ group.name }}</td>
+                <td><b>{{ group.name }}</b></td>
                 <td>{{ group.type }}</td>
                 <td>
                     {% if group.type == 'Host Group' %}
@@ -58,6 +58,7 @@
         </tbody>
     </table>
 </div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -96,6 +97,45 @@
     .page-link:hover {
         color: #000;
     }
+
+    /* Child table styles */
+    .child-table {
+        margin-bottom: 0;
+    }
+
+    .child-table thead th {
+        background-color: #212529;
+        color: white;
+        vertical-align: middle;
+    }
+
+    .child-content {
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        padding: 1rem;
+    }
+
+    .child-group-row {
+        background-color: white;
+    }
+
+    .child-details-row td {
+        padding: 0 !important;
+    }
+
+    /* Sub-table styles */
+    .child-content .table {
+        margin-bottom: 0;
+    }
+
+    .child-content .table thead th {
+        background-color: #495057;
+    }
+
+    /* Add this for expanded rows */
+    .expanded-row {
+        background-color: #f8f9fa !important;
+    }
 </style>
 
 <script>
@@ -125,13 +165,12 @@
             }
         });
 
-        // Click handler with proper access to groupsData
+        // Click handler'ı güncelle
         $('#dataTable').on('click', '.toggle-details', function () {
             const groupName = $(this).data('target');
+            const groupData = groupsData[groupName];
             const tr = $(this).closest('tr');
             const row = table.row(tr);
-            const groupData = groupsData[groupName];
-
 
             if (!groupData) {
                 console.error('No data found for group:', groupName);
@@ -140,48 +179,29 @@
 
             if (row.child.isShown()) {
                 row.child.hide();
-                tr.removeClass('shown');
+                tr.removeClass('shown expanded-row');
                 $(this).text('Expand').removeClass('btn-primary').addClass('btn-outline-primary');
             } else {
                 let childContent = '';
 
-                if (groupData.type === 'Host Group' && groupData.hosts) {
-                    childContent = createHostTable(groupData.hosts);
+                if (groupData.type === 'Composite Group' && groupData.children?.length > 0) {
+                    childContent = createChildGroupsTable(groupData.children);
                 }
-                else if (groupData.type === 'Network Group' && groupData.networks) {
-                    childContent = createNetworkTable(groupData.networks);
+
+                if (groupData.hosts?.length > 0) {
+                    childContent += createHostTable(groupData.hosts);
                 }
-                else if (groupData.type === 'Network Range Group' && groupData.ranges) {
-                    childContent = createRangeTable(groupData.ranges);
+                if (groupData.networks?.length > 0) {
+                    childContent += createNetworkTable(groupData.networks);
                 }
-                else if (groupData.type === 'Composite Group') {
-                    // Önce child groups tablosunu oluştur
-                    if (groupData.children && groupData.children.length > 0) {
-                        childContent = createChildGroupsTable(groupData.children);
-                    }
-
-                    // Direkt bağlı host'ları göster
-                    if (groupData.hosts && groupData.hosts.length > 0) {
-                        childContent = (childContent || '') + createHostTable(groupData.hosts);
-                    }
-
-                    // Direkt bağlı network'leri göster
-                    if (groupData.networks && groupData.networks.length > 0) {
-                        childContent = (childContent || '') + createNetworkTable(groupData.networks);
-                    }
-
-                    // Direkt bağlı range'leri göster
-                    if (groupData.ranges && groupData.ranges.length > 0) {
-                        childContent = (childContent || '') + createRangeTable(groupData.ranges);
-                    }
+                if (groupData.ranges?.length > 0) {
+                    childContent += createRangeTable(groupData.ranges);
                 }
 
                 if (childContent) {
                     row.child(childContent).show();
-                    tr.addClass('shown');
+                    tr.addClass('shown expanded-row');
                     $(this).text('Collapse').removeClass('btn-outline-primary').addClass('btn-primary');
-                } else {
-                    console.warn('No content generated for group:', groupName);
                 }
             }
         });
@@ -273,18 +293,35 @@
         }
 
         function createChildGroupsTable(children) {
-            let rows = '';
+            let content = '';
             const hasExpandableChildren = children.some(child => {
                 const childData = groupsData[child];
                 return childData && (childData.hosts?.length || childData.networks?.length || childData.ranges?.length);
             });
+
+            // Ana tablo oluşturma
+            content += `
+            <div class="mb-4">
+                <table class="table table-bordered child-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 30%">Child Group Name ${hasExpandableChildren ?
+                    `<button class="btn btn-primary btn-sm expand-all-children float-end">Expand All</button>`
+                    : ''}</th>
+                            <th style="width: 25%">Type</th>
+                            <th style="width: 35%">Details</th>
+                            <th style="width: 10%">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
 
             children.forEach(child => {
                 if (groupsData[child]) {
                     const childData = groupsData[child];
                     const hasExpandableContent = childData.hosts?.length || childData.networks?.length || childData.ranges?.length;
 
-                    // Determine composite type
+                    // Child type ve detayları belirleme
                     let childType = childData.type;
                     let details = [];
 
@@ -310,53 +347,32 @@
                         childType = `Composite ${objectTypes.join('/')} Group`;
                     }
 
-                    rows += `
-                    <tr>
-                        <td>${child}</td>
-                        <td>${childType}</td>
-                        <td>${details.join(', ')}</td>
-                        <td>
-                            ${hasExpandableContent ?
-                            `<span class="toggle-child-details ms-2 btn btn-sm btn-outline-primary" data-child="${child}">Expand</span>`
+                    content += `
+                        <tr class="child-group-row">
+                            <td><b>${child}</b></td>
+                            <td>${childType}</td>
+                            <td>${details.join(', ')}</td>
+                            <td class="text-center">
+                                ${hasExpandableContent ?
+                            `<button class="toggle-child-details btn btn-sm btn-outline-primary" data-child="${child}">
+                            Expand
+                        </button>`
                             : ''}
-                        </td>
-                    </tr>
-                    <tr class="child-details-row" id="child-details-${child}" style="display: none;">
-                        <td colspan="4" class="child-content"></td>
-                    </tr>
-                    `;
-                } else {
-                    console.warn('Child group not found in groupsData:', child);
-                    rows += `
-                    <tr>
-                        <td>${child}</td>
-                        <td>Unknown</td>
-                        <td>N/A</td>
-                        <td></td>
-                    </tr>
+                            </td>
+                        </tr>
+                        <tr class="child-details-row" id="child-details-${child}" style="display: none;">
+                            <td colspan="4">
+                                <div class="child-content ps-3 pe-3 pt-2 pb-2"></div>
+                            </td>
+                        </tr>
                     `;
                 }
             });
 
-            let table = `
-            <table class="table table-bordered child-table">
-                <thead>
-                    <tr>
-                        <th>
-                            Child Group Name
-                            ${hasExpandableChildren ?
-                    `<button class="btn btn-primary btn-sm expand-all-children ms-2">Expand All</button>`
-                    : ''}
-                        </th>
-                        <th>Type</th>
-                        <th>Details</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows}
-                </tbody>
-            </table>
+            content += `
+                    </tbody>
+                </table>
+            </div>
             `;
 
             // Add click handlers
@@ -394,7 +410,7 @@
                 });
             }, 0);
 
-            return table;
+            return content;
         }
 
         // Helper function to toggle child details
