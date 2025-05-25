@@ -3,8 +3,14 @@ Host Obje Adi: "hebele-hubele", IP: 1.1.1.1, Aciklama: N/A
 Host Obje Adi: "hebele-hubele", IP: 1.1.2.2, Aciklama: N/A
 ==============================
 Grup ADI: foo-glb
-Diger Obje Adi: bar, Tipi:
+Diger Obje Adi: foo, Tipi:
 ================================
 Grup ADI: bar
 Host Obje Adi: "hebele-hubele", IP: 123.232.232.232, Aciklama: N/A
 Host Obje Adi: "hebele-hubele", IP: 10.10.101.1, Aciklama: N/A
+================================
+Grup ADI: bar-nw-range
+Network Range Obje Adi: Range_Prod_10.10.10.10, Range: 10.10.10.10 - 10-10.10.20, Aciklama: N/A
+================================
+Grup ADI: bar-nw-obje
+Network Obje Adi: network_10.81.81.81, Network: 10.81.81.81, Subnet Mask: 255.255.255.254, Aciklama: N/A

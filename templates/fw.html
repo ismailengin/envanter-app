@@ -30,6 +30,7 @@
             <tr>
                 <th>Group Name</th>
                 <th>IP</th>
+                <th>Host Obje</th>
                 <th>Actions</th>
                 <th style="display: none;">Extn.</th>
             </tr>
@@ -42,6 +43,13 @@
 
 {% block scripts %}
 <script>
+    $(document).on('click', '.copy-btn', function () {
+        const textToCopy = $(this).data('clipboard-text');
+        navigator.clipboard.writeText(textToCopy).then(() => {
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+        });
+    });
     $(document).ready(function () {
         fetch('static/samplefw.txt')
             .then(response => response.text())
@@ -114,15 +122,21 @@
                 childData = item.children ? item.children : [];
                 if (childData.length > 0) {
                     item.child = childData.map(child => {
-                        return `<div>${child['Grup ADI']} --- ${child['IP'].join(', ')}</div>`;
+                        if (child['IP'] == null) {
+                            return `<div>${child['Grup ADI']} --- No IP</div>`;
+                        }
+                        return `<div>${child['Grup ADI']} --- ${child['IP'].join(', ')} --- ${child['Host Obje Adi'].join('<br>')}</div>`;
                     });
                 } else {
                     item.child = null;
                 }
                 const row = $(`
                         <tr class="group-row" data-row-id="${rowId}">
-                            <td>${item['Grup ADI']}</td>
-                            <td>${item['IP'] ? item['IP'].join(', ') : ''}</td>
+                            <td>
+                                ${item['Grup ADI']}
+                            </td>
+                            <td>${item['IP'] ? item['IP'].join('<br>') : ''}</td>
+                            <td>${item['Host Obje Adi'] ? item['Host Obje Adi'].join('<br>') : ''}</td>
                             <td>
                                 ${item.children && item.children.length > 0 ? '<span class="toggle-details" data-target="' + rowId + '">Expand</span>' : ''}
                             </td>
@@ -160,9 +174,27 @@
                     console.log(row.data());
                     const matchingElements = data.filter(item => item['Grup ADI'] === key);
                     const childDetails = matchingElements[0].children.map(child => {
-                        return `<div>${child['Grup ADI']} --- ${child['IP'].join(', ')}</div>`;
+                        if (child['IP'] == null) {
+                            return `<div>${child['Grup ADI']} --- No IP</div>`;
+                        }
+                        return `
+                        <tr>
+                            <td colspan=1>${child['Grup ADI']}</td>
+                            <td colspan=1>${child['IP'].join('<br>')}</td> 
+                            <td colspan=1>${child['Host Obje Adi'].join('<br>')}</td></tr>`;
                     }).join('');
-                    row.child(childDetails).show();
+                    childTable = `<table class="table table-bordered">                   
+                                <thead>
+    <tr>
+      <th scope="col">Group Name</th>
+      <th scope="col">IP</th>
+      <th scope="col">Host</th>
+    </tr>
+  </thead>
+  <tbody>
+                            ` + childDetails + `
+                            </tbody></table>`;
+                    row.child(childTable).show();
                     tr.addClass('shown');
                 }
             });
