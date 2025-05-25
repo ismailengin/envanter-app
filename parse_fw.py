@@ -66,7 +66,6 @@ def parse_fw_file(file_path):
                 for part in parts:
                     if ':' in part:
                         key, value = [x.strip().strip('"') for x in part.split(':', 1)]
-                        print(f"Processing other object: {key} with value: {value}")
                         if (key != "Tipi"):
                             group_data['children'].append(value)
                             child_parent_map[value].append(group_name)
