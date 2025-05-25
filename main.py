@@ -4,6 +4,8 @@ from datetime import timedelta
 from pypika import Table, Query, Schema, functions as fn
 import os
 
+from parse_fw import parse_fw_file
+
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
@@ -422,7 +424,14 @@ def deneme():
 @app.route('/fw')
 def firewall():
     if 'username' in session:
-        return render_template('fw.html')
+        groups = parse_fw_file('static/samplefw.txt')
+        groups_dict = {g['name']: g for g in groups}
+
+        # Filter out groups that are children of other groups
+        child_groups = {child for group in groups for child in group['children']}
+        filtered_groups = [group for group in groups if group['name'] not in child_groups]
+
+        return render_template('fw.html', groups=filtered_groups, groups_dict=groups_dict)
     else:
         return redirect(url_for('login'))
 

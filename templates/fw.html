@@ -1,203 +1,364 @@
-{%extends 'layout.html' %}
-{% block head %}
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive DataTables</title>
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <style>
-        .details-row {
-            display: none;
-        }
-
-        .toggle-details {
-            cursor: pointer;
-            color: blue;
-            text-decoration: underline;
-        }
-    </style>
-</head>
-{% endblock %}
+<!-- templates/fw.html -->
+{% extends 'layout.html' %}
 
 {% block content %}
-
 <div id="main-div" class="container-sm justify-content-center pb-5 pe-5 ps-5">
-    <table id="dataTable" class="display" style="width:100%">
+    <table id="dataTable" class="table table-striped table-bordered compact" style="width: 100%;">
         <thead>
             <tr>
                 <th>Group Name</th>
-                <th>IP</th>
-                <th>Host Obje</th>
-                <th>Actions</th>
-                <th style="display: none;">Extn.</th>
+                <th>Type</th>
+                <th>Details</th>
+                <th>Action</th>
+                <th class="d-none">Search Data</th> <!-- Gizli kolon -->
             </tr>
         </thead>
         <tbody>
+            {% for group in groups %}
+            <tr data-id="{{ group.name }}">
+                <td>{{ group.name }}</td>
+                <td>{{ group.type }}</td>
+                <td>
+                    {% if group.type == 'Host Group' %}
+                    {{ group.hosts|length }} host(s)
+                    {% elif group.type == 'Network Group' %}
+                    {{ group.networks|length }} network(s)
+                    {% elif group.type == 'Network Range Group' %}
+                    {{ group.ranges|length }} range(s)
+                    {% elif group.type == 'Composite Group' %}
+                    {{ group.children|length }} child group(s)
+                    {% endif %}
+                </td>
+                <td>
+                    {% if group.hosts or group.networks or group.ranges or group.children %}
+                    <span class="toggle-details btn btn-sm btn-outline-primary"
+                        data-target="{{ group.name }}">Expand</span>
+                    {% endif %}
+                </td>
+                <td class="d-none">
+                    {% if group.all_hosts %}
+                    {% for host in group.all_hosts %}
+                    {{ host.host_obje_adi }} {{ host.ip }} {{ host.description }}
+                    {% endfor %}
+                    {% endif %}
+                    {% if group.all_networks %}
+                    {% for network in group.all_networks %}
+                    {{ network.network_obje_adi }} {{ network.network }} {{ network.subnet_mask }} {{
+                    network.description }}
+                    {% endfor %}
+                    {% endif %}
+                    {% if group.all_ranges %}
+                    {% for range in group.all_ranges %}
+                    {{ range.network_range_obje_adi }} {{ range.range }} {{ range.description }}
+                    {% endfor %}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
         </tbody>
     </table>
 </div>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<style>
+    /* Add this style block after your script imports */
+    .table thead th {
+        background-color: #212529;
+        /* Bootstrap dark color */
+        color: white;
+    }
+
+    .child-table thead th {
+        background-color: #212529;
+        color: white;
+    }
+</style>
 <script>
-    $(document).on('click', '.copy-btn', function () {
-        const textToCopy = $(this).data('clipboard-text');
-        navigator.clipboard.writeText(textToCopy).then(() => {
-        }).catch(err => {
-            console.error('Failed to copy text: ', err);
-        });
-    });
     $(document).ready(function () {
-        fetch('static/samplefw.txt')
-            .then(response => response.text())
-            .then(data => {
-                const groups = parseGroups(data);
-                const tableData = buildHierarchy(groups);
-                populateTable(Object.values(tableData));
-            });
+        const groupsData = JSON.parse('{{ groups_dict|tojson|safe }}');
+        console.log('Initial groups data:', groupsData);
 
-        function parseGroups(data) {
-            const groups = [];
-            const rawObjects = data.split('=====').map(obj => obj.trim()).filter(obj => obj);
-
-            rawObjects.forEach(raw => {
-                const lines = raw.split('\n');
-                const group = {};
-                lines.forEach(line => {
-                    const entries = line.split(',').map(entry => entry.trim());
-                    entries.forEach(entry => {
-                        const [key, value] = entry.split(':').map(part => part.trim());
-                        if (key && value) {
-                            if (!group[key]) {
-                                group[key] = [];
-                            }
-                            if (key == 'Grup ADI') {
-                                group[key] = value.replace(/^"|"$/g, ''); // Remove quotes if present
-                            } else {
-                                group[key].push(value.replace(/^"|"$/g, '')); // Remove quotes if present
-                            }
-                        }
-                    });
-                });
-                groups.push(group);
-            });
-            return groups;
-        }
-
-        function buildHierarchy(groups) {
-            const groupMap = {};
-            const childGroups = [];
-            // Create a map of all groups
-            groups.forEach(group => {
-                const groupName = group['Grup ADI'];
-                groupMap[groupName] = { ...group, children: [] };
-            });
-
-            console.log(groupMap);
-
-            // Link child groups to their parents
-            groups.forEach(group => {
-                const groupName = group['Grup ADI'];
-                const childGroup = group['Diger Obje Adi'];
-                if (childGroup) {
-                    childGroup.map(childGroup => {
-                        groupMap[groupName].children.push(groupMap[childGroup]);
-                        childGroups.push(childGroup); // Store child groups for later deletion
-                    });
+        // Initialize DataTable with search configuration
+        const table = $('#dataTable').DataTable({
+            "pageLength": 10,
+            "lengthMenu": [10, 25, 50, 100],
+            "columnDefs": [
+                {
+                    "targets": [4], // Gizli kolon indeksi
+                    "visible": false,
+                    "searchable": true
                 }
-            });
-            childGroups.forEach(childGroup => {
-                delete groupMap[childGroup]; // Remove child groups from the main map
-            })
-            return groupMap; // Return the hierarchy as a dictionary
-        }
+            ]
+        });
 
-        function populateTable(data, parent = null) {
-            const tableBody = $('#dataTable tbody');
-            data.forEach(item => {
-                const rowId = `row-${Math.random().toString(36).substr(2, 9)}`;
-                childData = item.children ? item.children : [];
-                if (childData.length > 0) {
-                    item.child = childData.map(child => {
-                        if (child['IP'] == null) {
-                            return `<div>${child['Grup ADI']} --- No IP</div>`;
-                        }
-                        return `<div>${child['Grup ADI']} --- ${child['IP'].join(', ')} --- ${child['Host Obje Adi'].join('<br>')}</div>`;
-                    });
-                } else {
-                    item.child = null;
+        // Click handler with proper access to groupsData
+        $('#dataTable').on('click', '.toggle-details', function () {
+            const groupName = $(this).data('target');
+            const tr = $(this).closest('tr');
+            const row = table.row(tr);
+            const groupData = groupsData[groupName];
+
+            console.log('Group data for:', groupName, groupData);
+
+            if (!groupData) {
+                console.error('No data found for group:', groupName);
+                return;
+            }
+
+            if (row.child.isShown()) {
+                row.child.hide();
+                tr.removeClass('shown');
+                $(this).text('Expand').removeClass('btn-primary').addClass('btn-outline-primary');
+            } else {
+                let childContent = '';
+
+                if (groupData.type === 'Host Group' && groupData.hosts) {
+                    childContent = createHostTable(groupData.hosts);
                 }
-                const row = $(`
-                        <tr class="group-row" data-row-id="${rowId}">
-                            <td>
-                                ${item['Grup ADI']}
-                            </td>
-                            <td>${item['IP'] ? item['IP'].join('<br>') : ''}</td>
-                            <td>${item['Host Obje Adi'] ? item['Host Obje Adi'].join('<br>') : ''}</td>
-                            <td>
-                                ${item.children && item.children.length > 0 ? '<span class="toggle-details" data-target="' + rowId + '">Expand</span>' : ''}
-                            </td>
-                            <td style="display:none">${item.child}  </td>
-                        </tr>
-                    `);
-
-                tableBody.append(row);
-            });
-
-            const table = new DataTable('#dataTable', {
-                // columns: [
-                //     { title: "Group Name", data: "Grup ADI" },
-                //     { title: "IP", data: "IP" },
-                //     // { title: "Extn.", data: "extn", defaultContent: "", visible: false }
-                // ]
-            });
-
-            // Add toggle functionality
-            $('#dataTable').on('click', '.toggle-details', function () {
-                var tr = $(this).parents('tr');
-                var row = table.row(tr);
-
-
-
-
-                if (row.child.isShown()) {
-                    // This row is already open - close it
-                    row.child.hide();
-                    tr.removeClass('shown');
+                else if (groupData.type === 'Network Group' && groupData.networks) {
+                    childContent = createNetworkTable(groupData.networks);
                 }
-                else {
-                    // Open this row
-                    const key = row.data()[0];
-                    console.log(row.data());
-                    const matchingElements = data.filter(item => item['Grup ADI'] === key);
-                    const childDetails = matchingElements[0].children.map(child => {
-                        if (child['IP'] == null) {
-                            return `<div>${child['Grup ADI']} --- No IP</div>`;
-                        }
-                        return `
-                        <tr>
-                            <td colspan=1>${child['Grup ADI']}</td>
-                            <td colspan=1>${child['IP'].join('<br>')}</td> 
-                            <td colspan=1>${child['Host Obje Adi'].join('<br>')}</td></tr>`;
-                    }).join('');
-                    childTable = `<table class="table table-bordered">                   
-                                <thead>
-    <tr>
-      <th scope="col">Group Name</th>
-      <th scope="col">IP</th>
-      <th scope="col">Host</th>
-    </tr>
-  </thead>
-  <tbody>
-                            ` + childDetails + `
-                            </tbody></table>`;
-                    row.child(childTable).show();
+                else if (groupData.type === 'Network Range Group' && groupData.ranges) {
+                    childContent = createRangeTable(groupData.ranges);
+                }
+                else if (groupData.type === 'Composite Group' && groupData.children) {
+                    childContent = createChildGroupsTable(groupData.children);
+                }
+
+                if (childContent) {
+                    row.child(childContent).show();
                     tr.addClass('shown');
+                    $(this).text('Collapse').removeClass('btn-outline-primary').addClass('btn-primary');
+                } else {
+                    console.warn('No content generated for group:', groupName);
+                }
+            }
+        });
+
+        function createHostTable(hosts) {
+            let rows = '';
+            hosts.forEach(host => {
+                rows += `
+                <tr>
+                    <td>${host.host_obje_adi}</td>
+                    <td>${host.ip}</td>
+                    <td>${host.description || 'N/A'}</td>
+                </tr>
+            `;
+            });
+
+            return `
+            <table class="table table-bordered child-table">
+                <thead>
+                    <tr>
+                        <th>Host Name</th>
+                        <th>IP Address</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
+        `;
+        }
+
+        function createNetworkTable(networks) {
+            let rows = '';
+            networks.forEach(net => {
+                rows += `
+                <tr>
+                    <td>${net.network_obje_adi}</td>
+                    <td>${net.network}</td>
+                    <td>${net.subnet_mask}</td>
+                    <td>${net.description || 'N/A'}</td>
+                </tr>
+            `;
+            });
+
+            return `
+            <table class="table table-bordered child-table">
+                <thead>
+                    <tr>
+                        <th>Network Name</th>
+                        <th>Network</th>
+                        <th>Subnet Mask</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
+        `;
+        }
+
+        function createRangeTable(ranges) {
+            let rows = '';
+            ranges.forEach(range => {
+                rows += `
+                <tr>
+                    <td>${range.network_range_obje_adi}</td>
+                    <td>${range.range}</td>
+                    <td>${range.description || 'N/A'}</td>
+                </tr>
+            `;
+            });
+
+            return `
+            <table class="table table-bordered child-table">
+                <thead>
+                    <tr>
+                        <th>Range Name</th>
+                        <th>IP Range</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
+        `;
+        }
+
+        function createChildGroupsTable(children) {
+            let rows = '';
+            const hasExpandableChildren = children.some(child => {
+                const childData = groupsData[child];
+                return childData && (childData.hosts?.length || childData.networks?.length || childData.ranges?.length);
+            });
+
+            children.forEach(child => {
+                if (groupsData[child]) {
+                    const childData = groupsData[child];
+                    const hasExpandableContent = childData.hosts?.length || childData.networks?.length || childData.ranges?.length;
+
+                    rows += `
+                    <tr>
+                        <td>${child}</td>
+                        <td>${childData.type}</td>
+                        <td>
+                            ${childData.type === 'Host Group'
+                            ? `${childData.hosts?.length || 0} host(s)`
+                            : childData.type === 'Network Group'
+                                ? `${childData.networks?.length || 0} network(s)`
+                                : childData.type === 'Network Range Group'
+                                    ? `${childData.ranges?.length || 0} range(s)`
+                                    : childData.type === 'Composite Group'
+                                        ? `${childData.children?.length || 0} child group(s)`
+                                        : 'N/A'
+                        }
+                        </td>
+                        <td>
+                            ${hasExpandableContent ?
+                            `<span class="toggle-child-details ms-2 btn btn-sm btn-outline-primary" data-child="${child}">Expand</span>`
+                            : ''}
+                        </td>
+                    </tr>
+                    <tr class="child-details-row" id="child-details-${child}" style="display: none;">
+                        <td colspan="4" class="child-content"></td>
+                    </tr>
+                    `;
+                } else {
+                    console.warn('Child group not found in groupsData:', child);
+                    rows += `
+                    <tr>
+                        <td>${child}</td>
+                        <td>Unknown</td>
+                        <td>N/A</td>
+                        <td></td>
+                    </tr>
+                    `;
                 }
             });
+
+            let table = `
+            <table class="table table-bordered child-table">
+                <thead>
+                    <tr>
+                        <th>
+                            Child Group Name
+                            ${hasExpandableChildren ?
+                    `<button class="btn btn-primary btn-sm expand-all-children ms-2">Expand All</button>`
+                    : ''}
+                        </th>
+                        <th>Type</th>
+                        <th>Details</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
+            `;
+
+            // Add click handlers
+            setTimeout(() => {
+                // Existing toggle-child-details handler
+                $('.toggle-child-details').on('click', function () {
+                    const childName = $(this).data('child');
+                    toggleChildDetails(childName, $(this));
+                });
+
+                // New expand-all-children handler
+                $('.expand-all-children').on('click', function () {
+                    const parentTable = $(this).closest('table');
+                    const toggleButtons = parentTable.find('.toggle-child-details');
+
+                    if ($(this).text() === 'Expand All') {
+                        toggleButtons.each(function () {
+                            const childName = $(this).data('child');
+                            const detailsRow = $(`#child-details-${childName}`);
+                            if (!detailsRow.is(':visible')) {
+                                toggleChildDetails(childName, $(this));
+                            }
+                        });
+                        $(this).text('Collapse All');
+                    } else {
+                        toggleButtons.each(function () {
+                            const childName = $(this).data('child');
+                            const detailsRow = $(`#child-details-${childName}`);
+                            if (detailsRow.is(':visible')) {
+                                toggleChildDetails(childName, $(this));
+                            }
+                        });
+                        $(this).text('Expand All');
+                    }
+                });
+            }, 0);
+
+            return table;
+        }
+
+        // Helper function to toggle child details
+        function toggleChildDetails(childName, button) {
+            const detailsRow = $(`#child-details-${childName}`);
+            const childData = groupsData[childName];
+
+            if (detailsRow.is(':visible')) {
+                detailsRow.hide();
+                button.text('Expand');
+            } else {
+                let content = '';
+                if (childData.type === 'Host Group' && childData.hosts) {
+                    content = createHostTable(childData.hosts);
+                }
+                else if (childData.type === 'Network Group' && childData.networks) {
+                    content = createNetworkTable(childData.networks);
+                }
+                else if (childData.type === 'Network Range Group' && childData.ranges) {
+                    content = createRangeTable(childData.ranges);
+                }
+
+                detailsRow.find('.child-content').html(content);
+                detailsRow.show();
+                button.text('Collapse');
+            }
         }
     });
 </script>
