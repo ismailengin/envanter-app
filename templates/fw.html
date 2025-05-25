@@ -154,8 +154,26 @@
                 else if (groupData.type === 'Network Range Group' && groupData.ranges) {
                     childContent = createRangeTable(groupData.ranges);
                 }
-                else if (groupData.type === 'Composite Group' && groupData.children) {
-                    childContent = createChildGroupsTable(groupData.children);
+                else if (groupData.type === 'Composite Group') {
+                    // Önce child groups tablosunu oluştur
+                    if (groupData.children && groupData.children.length > 0) {
+                        childContent = createChildGroupsTable(groupData.children);
+                    }
+
+                    // Direkt bağlı host'ları göster
+                    if (groupData.hosts && groupData.hosts.length > 0) {
+                        childContent = (childContent || '') + createHostTable(groupData.hosts);
+                    }
+
+                    // Direkt bağlı network'leri göster
+                    if (groupData.networks && groupData.networks.length > 0) {
+                        childContent = (childContent || '') + createNetworkTable(groupData.networks);
+                    }
+
+                    // Direkt bağlı range'leri göster
+                    if (groupData.ranges && groupData.ranges.length > 0) {
+                        childContent = (childContent || '') + createRangeTable(groupData.ranges);
+                    }
                 }
 
                 if (childContent) {
@@ -266,22 +284,37 @@
                     const childData = groupsData[child];
                     const hasExpandableContent = childData.hosts?.length || childData.networks?.length || childData.ranges?.length;
 
+                    // Determine composite type
+                    let childType = childData.type;
+                    let details = [];
+
+                    if (childData.hosts?.length > 0) {
+                        details.push(`${childData.hosts.length} host(s)`);
+                    }
+                    if (childData.networks?.length > 0) {
+                        details.push(`${childData.networks.length} network(s)`);
+                    }
+                    if (childData.ranges?.length > 0) {
+                        details.push(`${childData.ranges.length} range(s)`);
+                    }
+                    if (childData.children?.length > 0) {
+                        details.push(`${childData.children.length} child group(s)`);
+                    }
+
+                    // If multiple object types exist, update the type
+                    const objectTypes = [];
+                    if (childData.hosts?.length) objectTypes.push('Host');
+                    if (childData.networks?.length) objectTypes.push('Network');
+                    if (childData.ranges?.length) objectTypes.push('Range');
+                    if (objectTypes.length > 1) {
+                        childType = `Composite ${objectTypes.join('/')} Group`;
+                    }
+
                     rows += `
                     <tr>
                         <td>${child}</td>
-                        <td>${childData.type}</td>
-                        <td>
-                            ${childData.type === 'Host Group'
-                            ? `${childData.hosts?.length || 0} host(s)`
-                            : childData.type === 'Network Group'
-                                ? `${childData.networks?.length || 0} network(s)`
-                                : childData.type === 'Network Range Group'
-                                    ? `${childData.ranges?.length || 0} range(s)`
-                                    : childData.type === 'Composite Group'
-                                        ? `${childData.children?.length || 0} child group(s)`
-                                        : 'N/A'
-                        }
-                        </td>
+                        <td>${childType}</td>
+                        <td>${details.join(', ')}</td>
                         <td>
                             ${hasExpandableContent ?
                             `<span class="toggle-child-details ms-2 btn btn-sm btn-outline-primary" data-child="${child}">Expand</span>`
@@ -371,22 +404,28 @@
 
             if (detailsRow.is(':visible')) {
                 detailsRow.hide();
-                button.text('Expand');
+                button.text('Expand').removeClass('btn-primary').addClass('btn-outline-primary');
             } else {
                 let content = '';
-                if (childData.type === 'Host Group' && childData.hosts) {
-                    content = createHostTable(childData.hosts);
+
+                // Host verileri
+                if (childData.hosts && childData.hosts.length > 0) {
+                    content += createHostTable(childData.hosts);
                 }
-                else if (childData.type === 'Network Group' && childData.networks) {
-                    content = createNetworkTable(childData.networks);
+
+                // Network verileri
+                if (childData.networks && childData.networks.length > 0) {
+                    content += createNetworkTable(childData.networks);
                 }
-                else if (childData.type === 'Network Range Group' && childData.ranges) {
-                    content = createRangeTable(childData.ranges);
+
+                // Range verileri
+                if (childData.ranges && childData.ranges.length > 0) {
+                    content += createRangeTable(childData.ranges);
                 }
 
                 detailsRow.find('.child-content').html(content);
                 detailsRow.show();
-                button.text('Collapse');
+                button.text('Collapse').removeClass('btn-outline-primary').addClass('btn-primary');
             }
         }
     });
