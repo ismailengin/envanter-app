@@ -1,8 +1,15 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import pyodbc
 from datetime import timedelta
 from pypika import Table, Query, Schema, functions as fn
 import os
+import requests
+from requests_ntlm import HttpNtlmAuth
+import json
+import schedule
+import time
+from datetime import datetime
+from dotenv import load_dotenv
 
 from parse_fw import parse_fw_file
 
@@ -421,10 +428,129 @@ def deneme():
         return redirect(url_for('login'))
 
 
+def download_latest_sharepoint_files():
+    """Download the latest file from each specified SharePoint folder using NTLM authentication"""
+    try:
+        # Get SharePoint credentials from environment variables
+        site_url = os.getenv('SHAREPOINT_SITE_URL')
+        username = os.getenv('SHAREPOINT_USERNAME')
+        password = os.getenv('SHAREPOINT_PASSWORD')
+        domain = os.getenv('SHAREPOINT_DOMAIN')
+
+        # Get list of folders from environment variable, split by comma
+        folder_urls = os.getenv('SHAREPOINT_FOLDER_URLS', '/Shared Documents/Content').split(',')
+        folder_urls = [url.strip() for url in folder_urls]  # Clean up whitespace
+
+        # Set up NTLM authentication
+        auth = HttpNtlmAuth(f"{domain}\\{username}", password)
+
+        # Headers for SharePoint REST API
+        headers = {
+            'Accept': 'application/json;odata=verbose',
+            'Content-Type': 'application/json;odata=verbose'
+        }
+
+        downloaded_files = {}  # Dictionary to store downloaded files by folder
+
+        for folder_url in folder_urls:
+            try:
+                # Construct the API URL for this folder
+                api_base = f"{site_url}/_api/web"
+                folder_api_url = f"{api_base}/GetFolderByServerRelativeUrl('{folder_url}')/Files"
+
+                # Get list of files in the folder
+                response = requests.get(folder_api_url, auth=auth, headers=headers, verify=False)
+                response.raise_for_status()
+
+                # Parse the response
+                files_data = response.json()['d']['results']
+
+                if not files_data:
+                    print(f"No files found in folder: {folder_url}")
+                    continue
+
+                # Find the latest file
+                latest_file = max(files_data, key=lambda x: datetime.strptime(
+                    x['TimeLastModified'], "%Y-%m-%dT%H:%M:%SZ"))
+
+                # Download the file
+                file_url = latest_file['ServerRelativeUrl'].split('/')
+                file_actual_url = '/'+'/'.join(file_url[2:])
+                file_name = os.path.basename(file_actual_url)
+                download_path = os.path.join('static', file_name)
+
+                # Get the file content
+                file_response = requests.get(f"{site_url}{file_actual_url}", auth=auth, verify=False)
+                file_response.raise_for_status()
+
+                # Save the file
+                with open(download_path, "wb") as local_file:
+                    local_file.write(file_response.content)
+
+                print(f"Successfully downloaded {file_name} from {folder_url}")
+                downloaded_files[folder_url] = download_path
+
+            except requests.exceptions.RequestException as e:
+                print(f"Error processing folder {folder_url}: {str(e)}")
+                continue
+            except Exception as e:
+                print(f"Unexpected error processing folder {folder_url}: {str(e)}")
+                continue
+
+        return downloaded_files
+
+    except Exception as e:
+        print(f"Unexpected error in main process: {str(e)}")
+        return {}
+
+
+def schedule_daily_download():
+    """Schedule the daily download at 5:00 AM"""
+    schedule.every().day.at("05:00").do(download_latest_sharepoint_files)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(60)
+
+
+def merge_fw_files(file_paths):
+    """Merge multiple firewall files into a single file with proper separators"""
+    merged_content = []
+
+    for file_path in file_paths:
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                content = file.read().strip()
+                if content:  # Only add non-empty content
+                    merged_content.append(content)
+        except Exception as e:
+            print(f"Error reading file {file_path}: {str(e)}")
+            continue
+
+    # Join all content with separator
+    return '\n==============================\n'.join(merged_content)
+
+
 @app.route('/fw')
 def firewall():
     if 'username' in session:
-        groups = parse_fw_file('static/samplefw.txt')
+        # Download the latest files from SharePoint
+        downloaded_files = download_latest_sharepoint_files()
+
+        if downloaded_files:
+            # Create a merged file
+            merged_file_path = os.path.join('static', 'merged_fw.txt')
+            merged_content = merge_fw_files(downloaded_files.values())
+
+            # Write merged content to file
+            with open(merged_file_path, 'w', encoding='utf-8') as f:
+                f.write(merged_content)
+
+            file_path = merged_file_path
+        else:
+            file_path = 'static/samplefw.txt'  # Fallback to sample file if no downloads
+
+        groups = parse_fw_file(file_path)
         groups_dict = {g['name']: g for g in groups}
 
         # Filter out groups that are children of other groups
@@ -434,6 +560,42 @@ def firewall():
         return render_template('fw.html', groups=filtered_groups, groups_dict=groups_dict)
     else:
         return redirect(url_for('login'))
+
+
+@app.route('/trigger-download', methods=['POST'])
+def trigger_download():
+    if 'username' not in session:
+        return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
+
+    try:
+        # Download the latest files from SharePoint
+        downloaded_files = download_latest_sharepoint_files()
+
+        if downloaded_files:
+            # Create a merged file
+            merged_file_path = os.path.join('static', 'merged_fw.txt')
+            merged_content = merge_fw_files(downloaded_files.values())
+
+            # Write merged content to file
+            with open(merged_file_path, 'w', encoding='utf-8') as f:
+                f.write(merged_content)
+
+            return jsonify({
+                'status': 'success',
+                'message': f'Successfully downloaded and merged {len(downloaded_files)} files',
+                'files': list(downloaded_files.keys())
+            })
+        else:
+            return jsonify({
+                'status': 'warning',
+                'message': 'No files were downloaded'
+            })
+
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Error during download: {str(e)}'
+        }), 500
 
 
 @app.route('/add_service', methods=['POST'])
@@ -455,4 +617,10 @@ def update_os_handler():
 
 
 if __name__ == '__main__':
+    # Start the scheduler in a separate thread
+    import threading
+    scheduler_thread = threading.Thread(target=schedule_daily_download)
+    scheduler_thread.daemon = True
+    scheduler_thread.start()
+
     app.run(debug=True)
