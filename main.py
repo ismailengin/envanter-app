@@ -13,6 +13,8 @@ from dotenv import load_dotenv
 
 from parse_fw import parse_fw_file
 
+load_dotenv()
+
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
