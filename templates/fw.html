@@ -9,6 +9,9 @@
                 <i class="fas fa-sync-alt"></i> Download Latest Files
             </button>
             <div id="downloadStatus" class="mt-2"></div>
+            <div id="lastUpdated" class="mt-2 text-muted">
+                Last updated: {{ last_updated if last_updated else 'Never' }}
+            </div>
         </div>
     </div>
     <div class="row">
@@ -461,6 +464,7 @@
         $('#triggerDownload').click(function () {
             const button = $(this);
             const statusDiv = $('#downloadStatus');
+            const lastUpdatedDiv = $('#lastUpdated');
 
             // Disable button and show loading state
             button.prop('disabled', true);
@@ -474,6 +478,7 @@
                 success: function (response) {
                     if (response.status === 'success') {
                         statusDiv.html(`<div class="alert alert-success">${response.message}</div>`);
+                        lastUpdatedDiv.html(`Last updated: ${response.last_updated}`);
                         // Reload the page to show new data
                         setTimeout(() => {
                             window.location.reload();

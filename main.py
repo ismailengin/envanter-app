@@ -430,8 +430,62 @@ def deneme():
         return redirect(url_for('login'))
 
 
+def discover_sharepoint_folders():
+    """Discover all folders in the SharePoint site"""
+    try:
+        # Get SharePoint credentials from environment variables
+        site_url = os.getenv('SHAREPOINT_SITE_URL')
+        username = os.getenv('SHAREPOINT_USERNAME')
+        password = os.getenv('SHAREPOINT_PASSWORD')
+        domain = os.getenv('SHAREPOINT_DOMAIN')
+        root_folder = os.getenv('SHAREPOINT_ROOT_FOLDER', '/Shared Documents')
+
+        # Set up NTLM authentication
+        auth = HttpNtlmAuth(f"{domain}\\{username}", password)
+
+        # Headers for SharePoint REST API
+        headers = {
+            'Accept': 'application/json;odata=verbose',
+            'Content-Type': 'application/json;odata=verbose'
+        }
+
+        # Get root folder
+        api_base = f"{site_url}/_api/web"
+        root_folder_url = f"{api_base}/GetFolderByServerRelativeUrl('{root_folder}')/Folders"
+
+        response = requests.get(root_folder_url, auth=auth, headers=headers, verify=False)
+        response.raise_for_status()
+
+        folders = []
+        root_folders = response.json()['d']['results']
+
+        # Process each root folder
+        for folder in root_folders:
+            folder_url = folder['ServerRelativeUrl']
+            folders.append(folder_url)
+
+            # Get subfolders recursively
+            try:
+                subfolders_url = f"{api_base}/GetFolderByServerRelativeUrl('{folder_url}')/Folders"
+                subfolders_response = requests.get(subfolders_url, auth=auth, headers=headers, verify=False)
+                subfolders_response.raise_for_status()
+
+                subfolders = subfolders_response.json()['d']['results']
+                for subfolder in subfolders:
+                    folders.append(subfolder['ServerRelativeUrl'])
+            except Exception as e:
+                print(f"Error getting subfolders for {folder_url}: {str(e)}")
+                continue
+
+        return folders
+
+    except Exception as e:
+        print(f"Error discovering folders: {str(e)}")
+        return []
+
+
 def download_latest_sharepoint_files():
-    """Download the latest file from each specified SharePoint folder using NTLM authentication"""
+    """Download the latest file from each discovered SharePoint folder using NTLM authentication"""
     try:
         # Get SharePoint credentials from environment variables
         site_url = os.getenv('SHAREPOINT_SITE_URL')
@@ -439,9 +493,11 @@ def download_latest_sharepoint_files():
         password = os.getenv('SHAREPOINT_PASSWORD')
         domain = os.getenv('SHAREPOINT_DOMAIN')
 
-        # Get list of folders from environment variable, split by comma
-        folder_urls = os.getenv('SHAREPOINT_FOLDER_URLS', '/Shared Documents/Content').split(',')
-        folder_urls = [url.strip() for url in folder_urls]  # Clean up whitespace
+        # Discover folders
+        folder_urls = discover_sharepoint_folders()
+        if not folder_urls:
+            print("No folders discovered")
+            return {}
 
         # Set up NTLM authentication
         auth = HttpNtlmAuth(f"{domain}\\{username}", password)
@@ -533,24 +589,47 @@ def merge_fw_files(file_paths):
     return '\n==============================\n'.join(merged_content)
 
 
+def should_download_files():
+    """Check if files should be downloaded based on file existence and age"""
+    merged_file_path = os.path.join('static', 'merged_fw.txt')
+
+    # If file doesn't exist, we should download
+    if not os.path.exists(merged_file_path):
+        return True
+
+    # Check file age
+    file_age = datetime.now() - datetime.fromtimestamp(os.path.getmtime(merged_file_path))
+
+    # If file is older than 24 hours, we should download
+    return file_age.total_seconds() > 24 * 3600
+
+
 @app.route('/fw')
 def firewall():
     if 'username' in session:
-        # Download the latest files from SharePoint
-        downloaded_files = download_latest_sharepoint_files()
+        file_path = os.path.join('static', 'merged_fw.txt')
+        last_updated = None
 
-        if downloaded_files:
-            # Create a merged file
-            merged_file_path = os.path.join('static', 'merged_fw.txt')
-            merged_content = merge_fw_files(downloaded_files.values())
+        # Only download if necessary
+        if should_download_files():
+            print("Downloading new files...")
+            downloaded_files = download_latest_sharepoint_files()
 
-            # Write merged content to file
-            with open(merged_file_path, 'w', encoding='utf-8') as f:
-                f.write(merged_content)
+            if downloaded_files:
+                # Create a merged file
+                merged_content = merge_fw_files(downloaded_files.values())
 
-            file_path = merged_file_path
+                # Write merged content to file
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(merged_content)
+                last_updated = datetime.now()
+            else:
+                # If download fails, use sample file
+                file_path = 'static/samplefw.txt'
         else:
-            file_path = 'static/samplefw.txt'  # Fallback to sample file if no downloads
+            print("Using existing merged file...")
+            if os.path.exists(file_path):
+                last_updated = datetime.fromtimestamp(os.path.getmtime(file_path))
 
         groups = parse_fw_file(file_path)
         groups_dict = {g['name']: g for g in groups}
@@ -559,7 +638,10 @@ def firewall():
         child_groups = {child for group in groups for child in group['children']}
         filtered_groups = [group for group in groups if group['name'] not in child_groups]
 
-        return render_template('fw.html', groups=filtered_groups, groups_dict=groups_dict)
+        return render_template('fw.html',
+                               groups=filtered_groups,
+                               groups_dict=groups_dict,
+                               last_updated=last_updated.strftime('%Y-%m-%d %H:%M:%S') if last_updated else None)
     else:
         return redirect(url_for('login'))
 
@@ -585,7 +667,8 @@ def trigger_download():
             return jsonify({
                 'status': 'success',
                 'message': f'Successfully downloaded and merged {len(downloaded_files)} files',
-                'files': list(downloaded_files.keys())
+                'files': list(downloaded_files.keys()),
+                'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             })
         else:
             return jsonify({
