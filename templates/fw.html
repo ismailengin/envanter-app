@@ -2,15 +2,15 @@
 {% extends 'layout.html' %}
 
 {% block content %}
-<div id="main-div" class="container-sm justify-content-center pb-5 pe-5 ps-5" style="display: none;">
-    <!-- Add loading overlay -->
-    <div id="loadingOverlay"
-        class="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
-        style="background: rgba(255, 255, 255, 0.8); z-index: 9999;">
-        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-            <span class="visually-hidden">Loading...</span>
-        </div>
+<div id="loadingOverlay"
+    class="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
+    style="background: rgba(255, 255, 255, 0.8); z-index: 9999;">
+    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+        <span class="visually-hidden">Loading...</span>
     </div>
+</div>
+<div id="main-div" class="container-sm justify-content-center pb-5 pe-5 ps-5" style="display: none;">
+
 
     <div class="row mb-3">
         <div class="col">

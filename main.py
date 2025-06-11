@@ -1,3 +1,4 @@
+from parse_fw import parse_fw_file
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import pyodbc
 from datetime import timedelta
@@ -10,8 +11,11 @@ import schedule
 import time
 from datetime import datetime
 from dotenv import load_dotenv
+import urllib3
 
-from parse_fw import parse_fw_file
+# Disable SSL warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 load_dotenv()
 
