@@ -35,12 +35,24 @@ users = {
     'user1': 'password1',
     'user2': 'password2',
     'user3': 'password3',
+    'infrafw': 'infrafw'
+}
+
+# Define user roles and their allowed endpoints
+user_roles = {
+    'infrafw': ['/fw'],  # infrafw user can only access /fw
+    'default': ['/', '/chart', '/fw']  # other users can access all endpoints
 }
 
 
 def is_valid_credentials(username, password):
     # Check if the provided username and password are valid
     return users.get(username) == password
+
+
+def get_user_allowed_endpoints(username):
+    # Return allowed endpoints for the user
+    return user_roles.get(username, user_roles['default'])
 
 
 # Number of entries per page
@@ -369,20 +381,12 @@ def get_runtime_stats():
 
 @app.route('/')
 def index():
-
     if 'username' in session:
+        # Check if user has access to this endpoint
+        if '/' not in get_user_allowed_endpoints(session['username']):
+            return redirect(url_for('firewall'))
 
         envanter_table_name = "BackendEnvanter"
-    # for key in request.form.keys():
-    #     values = request.form.getlist(key)
-    #     print("Key", key, "Value:", values)
-
-    # # Get the selected columns from the submitted form data
-    # selected_columns = request.args.getlist('selected_columns')
-
-    # if not selected_columns:
-    #     selected_columns = ['*']
-
         columns, data = get_data(envanter_table_name)
 
         selected_columns = ["ServisTipi", "ServisAdı", "Makine",
@@ -393,7 +397,7 @@ def index():
         return render_template(
             'index.html', username=session['username'],
             all_columns=all_columns, selected_columns=selected_columns, columns=columns, detail_columns=detail_columns,
-            data=data)
+            data=data, allowed_endpoints=get_user_allowed_endpoints(session['username']))
     else:
         return redirect(url_for('login'))
 
@@ -428,8 +432,13 @@ def logout():
 @app.route('/chart')
 def deneme():
     if 'username' in session:
+        # Check if user has access to this endpoint
+        if '/chart' not in get_user_allowed_endpoints(session['username']):
+            return redirect(url_for('fw'))
+
         runtime_stats = get_runtime_stats()
-        return render_template('chart.html', runtime_stats=runtime_stats)
+        return render_template('chart.html', runtime_stats=runtime_stats,
+                               allowed_endpoints=get_user_allowed_endpoints(session['username']))
     else:
         return redirect(url_for('login'))
 
@@ -621,6 +630,10 @@ def should_download_files():
 @app.route('/fw')
 def firewall():
     if 'username' in session:
+        # Check if user has access to this endpoint
+        if '/fw' not in get_user_allowed_endpoints(session['username']):
+            return redirect(url_for('index'))
+
         file_path = os.path.join('static', 'merged_fw.txt')
         last_updated = None
 
@@ -655,7 +668,8 @@ def firewall():
         return render_template('fw.html',
                                groups=filtered_groups,
                                groups_dict=groups_dict,
-                               last_updated=last_updated.strftime('%Y-%m-%d %H:%M:%S') if last_updated else None)
+                               last_updated=last_updated.strftime('%Y-%m-%d %H:%M:%S') if last_updated else None,
+                               allowed_endpoints=get_user_allowed_endpoints(session['username']))
     else:
         return redirect(url_for('login'))
 
@@ -721,5 +735,5 @@ if __name__ == '__main__':
     scheduler_thread = threading.Thread(target=schedule_daily_download)
     scheduler_thread.daemon = True
     scheduler_thread.start()
-
+    download_latest_sharepoint_files()
     app.run(debug=True)

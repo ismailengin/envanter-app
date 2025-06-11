@@ -2,15 +2,22 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-5">
         <div class="navbar-brand ms-2" href="#">MWBE</div>
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            {% if '/' in allowed_endpoints %}
             <li class="nav-item">
                 <a class="nav-link link" aria-current="page" href="{{ url_for('index')}}">Envanter</a>
             </li>
+            {% endif %}
+            {% if '/chart' in allowed_endpoints %}
             <li class="nav-item">
                 <a class="nav-link link" aria-current="page" href="{{ url_for('deneme')}}">Runtime Chart</a>
             </li>
+            {% endif %}
+            {% if '/fw' in allowed_endpoints %}
             <li class="nav-item">
                 <a class="nav-link link" aria-current="page" href="{{ url_for('firewall')}}">Firewall Objects</a>
             </li>
+            {% endif %}
+            {% if '/' in allowed_endpoints %}
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle link" href="#" id="navbarDarkDropdownMenuLink" role="button"
                     data-bs-toggle="dropdown" aria-expanded="false">
@@ -21,6 +28,8 @@
                     <li><a class="dropdown-item" href="#">Another action</a></li>
                     <li><a class="dropdown-item" href="#">Something else here</a></li>
                 </ul>
+            </li>
+            {% endif %}
         </ul>
         <div class="d-flex">
             <a href="{{ url_for('logout') }}" class="btn btn-primary mt-3 me-2 mb-2">Logout</a>
