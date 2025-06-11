@@ -527,8 +527,18 @@ def download_latest_sharepoint_files():
                     print(f"No files found in folder: {folder_url}")
                     continue
 
-                # Find the latest file
-                latest_file = max(files_data, key=lambda x: datetime.strptime(
+                # Filter files for .txt extension and '2025' in name
+                filtered_files = [
+                    f for f in files_data
+                    if f['Name'].lower().endswith('.txt') and '2025' in f['Name']
+                ]
+
+                if not filtered_files:
+                    print(f"No matching files found in folder: {folder_url}")
+                    continue
+
+                # Find the latest file from filtered list
+                latest_file = max(filtered_files, key=lambda x: datetime.strptime(
                     x['TimeLastModified'], "%Y-%m-%dT%H:%M:%SZ"))
 
                 # Download the file
