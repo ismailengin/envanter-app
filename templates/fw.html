@@ -25,60 +25,104 @@
     </div>
     <div class="row">
         <div class="col">
-            <table id="dataTable" class="table table-striped table-bordered compact" style="width: 100%;">
-                <thead>
-                    <tr>
-                        <th>Group Name</th>
-                        <th>Type</th>
-                        <th>Details</th>
-                        <th>Action</th>
-                        <th class="d-none">Search Data</th> <!-- Gizli kolon -->
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for group in groups %}
-                    <tr data-id="{{ group.name }}">
-                        <td><b>{{ group.name }}</b></td>
-                        <td>{{ group.type }}</td>
-                        <td>
-                            {% if group.type == 'Host Group' %}
-                            {{ group.hosts|length }} host(s)
-                            {% elif group.type == 'Network Group' %}
-                            {{ group.networks|length }} network(s)
-                            {% elif group.type == 'Network Range Group' %}
-                            {{ group.ranges|length }} range(s)
-                            {% elif group.type == 'Composite Group' %}
-                            {{ group.children|length }} child group(s)
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if group.hosts or group.networks or group.ranges or group.children %}
-                            <span class="toggle-details btn btn-sm btn-outline-primary"
-                                data-target="{{ group.name }}">Expand</span>
-                            {% endif %}
-                        </td>
-                        <td class="d-none">
-                            {% if group.all_hosts %}
-                            {% for host in group.all_hosts %}
-                            {{ host.host_obje_adi }} {{ host.ip }} {{ host.description }}
-                            {% endfor %}
-                            {% endif %}
-                            {% if group.all_networks %}
-                            {% for network in group.all_networks %}
-                            {{ network.network_obje_adi }} {{ network.network }} {{ network.subnet_mask }} {{
-                            network.description }}
-                            {% endfor %}
-                            {% endif %}
-                            {% if group.all_ranges %}
-                            {% for range in group.all_ranges %}
-                            {{ range.network_range_obje_adi }} {{ range.range }} {{ range.description }}
-                            {% endfor %}
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <!-- Add DataTable controls -->
+            <div class="dataTables_wrapper">
+                <div class="row mb-3">
+                    <div class="col-sm-12 col-md-6">
+                        <div class="dataTables_length">
+                            <label>Show
+                                <select class="form-select form-select-sm" style="width: auto; display: inline-block;">
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select> entries
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-sm-12 col-md-6">
+                        <div class="dataTables_filter text-end">
+                            <label>Search:
+                                <input type="search" class="form-control form-control-sm" placeholder=""
+                                    aria-controls="dataTable">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <table id="dataTable" class="table table-striped table-bordered compact" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Group Name</th>
+                            <th>Type</th>
+                            <th>Details</th>
+                            <th>Action</th>
+                            <th class="d-none">Search Data</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for group in groups %}
+                        <tr data-id="{{ group.name }}">
+                            <td><b>{{ group.name }}</b></td>
+                            <td>{{ group.type }}</td>
+                            <td>
+                                {% if group.type == 'Host Group' %}
+                                {{ group.hosts|length }} host(s)
+                                {% elif group.type == 'Network Group' %}
+                                {{ group.networks|length }} network(s)
+                                {% elif group.type == 'Network Range Group' %}
+                                {{ group.ranges|length }} range(s)
+                                {% elif group.type == 'Composite Group' %}
+                                {{ group.children|length }} child group(s)
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if group.hosts or group.networks or group.ranges or group.children %}
+                                <span class="toggle-details btn btn-sm btn-outline-primary"
+                                    data-target="{{ group.name }}">Expand</span>
+                                {% endif %}
+                            </td>
+                            <td class="d-none">
+                                {% if group.all_hosts %}
+                                {% for host in group.all_hosts %}
+                                {{ host.host_obje_adi }} {{ host.ip }} {{ host.description }}
+                                {% endfor %}
+                                {% endif %}
+                                {% if group.all_networks %}
+                                {% for network in group.all_networks %}
+                                {{ network.network_obje_adi }} {{ network.network }} {{ network.subnet_mask }} {{
+                                network.description }}
+                                {% endfor %}
+                                {% endif %}
+                                {% if group.all_ranges %}
+                                {% for range in group.all_ranges %}
+                                {{ range.network_range_obje_adi }} {{ range.range }} {{ range.description }}
+                                {% endfor %}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="row">
+                    <div class="col-sm-12 col-md-5">
+                        <div class="dataTables_info" role="status" aria-live="polite">
+                            Showing 1 to 10 of 0 entries
+                        </div>
+                    </div>
+                    <div class="col-sm-12 col-md-7">
+                        <div class="dataTables_paginate paging_simple_numbers">
+                            <ul class="pagination justify-content-end">
+                                <li class="paginate_button previous disabled">
+                                    <a href="#" class="page-link">&laquo;</a>
+                                </li>
+                                <li class="paginate_button next disabled">
+                                    <a href="#" class="page-link">&raquo;</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -167,7 +211,17 @@
     }
 
     #loadingOverlay.show {
-        display: flex;
+        display: flex !important;
+    }
+
+    /* Hide DataTable controls initially */
+    .dataTables_wrapper {
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+    }
+
+    .dataTables_wrapper.ready {
+        opacity: 1;
     }
 </style>
 
@@ -178,350 +232,352 @@
 
         const groupsData = JSON.parse('{{ groups_dict|tojson|safe }}');
 
-        // Initialize DataTable with updated configuration
-        const table = $('#dataTable').DataTable({
-            "pageLength": 10,
-            "lengthMenu": [10, 25, 50, 100],
-            "columnDefs": [
-                {
-                    "targets": [4], // Hidden column index
-                    "visible": false,
-                    "searchable": true
+        // Simulate loading delay
+        setTimeout(function () {
+            // Initialize DataTable with updated configuration
+            const table = $('#dataTable').DataTable({
+                "pageLength": 10,
+                "lengthMenu": [10, 25, 50, 100],
+                "columnDefs": [
+                    {
+                        "targets": [4], // Hidden column index
+                        "visible": false,
+                        "searchable": true
+                    }
+                ],
+                // Remove the default DOM structure since we're providing our own
+                "dom": "t",
+                "language": {
+                    "paginate": {
+                        "previous": "&laquo;",
+                        "next": "&raquo;"
+                    }
+                },
+                "initComplete": function () {
+                    // Hide loading overlay and show DataTable controls
+                    $('#loadingOverlay').removeClass('show');
+                    $('.dataTables_wrapper').addClass('ready');
                 }
-            ],
-            // Add Bootstrap styling
-            "dom": "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                "<'row'<'col-sm-12'tr>>" +
-                "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-            "language": {
-                "paginate": {
-                    "previous": "&laquo;",
-                    "next": "&raquo;"
-                }
-            },
-            "initComplete": function () {
-                // Hide loading overlay when DataTable is fully initialized
-                $('#loadingOverlay').removeClass('show');
-            }
-        });
-
-        // Click handler'ı güncelle
-        $('#dataTable').on('click', '.toggle-details', function () {
-            const groupName = $(this).data('target');
-            const groupData = groupsData[groupName];
-            const tr = $(this).closest('tr');
-            const row = table.row(tr);
-
-            if (!groupData) {
-                console.error('No data found for group:', groupName);
-                return;
-            }
-
-            if (row.child.isShown()) {
-                row.child.hide();
-                tr.removeClass('shown expanded-row');
-                $(this).text('Expand').removeClass('btn-primary').addClass('btn-outline-primary');
-            } else {
-                let childContent = '';
-
-                if (groupData.type === 'Composite Group' && groupData.children?.length > 0) {
-                    childContent = createChildGroupsTable(groupData.children);
-                }
-
-                if (groupData.hosts?.length > 0) {
-                    childContent += createHostTable(groupData.hosts);
-                }
-                if (groupData.networks?.length > 0) {
-                    childContent += createNetworkTable(groupData.networks);
-                }
-                if (groupData.ranges?.length > 0) {
-                    childContent += createRangeTable(groupData.ranges);
-                }
-
-                if (childContent) {
-                    row.child(childContent).show();
-                    tr.addClass('shown expanded-row');
-                    $(this).text('Collapse').removeClass('btn-outline-primary').addClass('btn-primary');
-                }
-            }
-        });
-
-        function createHostTable(hosts) {
-            let rows = '';
-            hosts.forEach(host => {
-                rows += `
-                <tr>
-                    <td>${host.host_obje_adi}</td>
-                    <td>${host.ip}</td>
-                    <td>${host.description || 'N/A'}</td>
-                </tr>
-            `;
             });
 
-            return `
-            <table class="table table-bordered child-table">
-                <thead>
+            // Click handler'ı güncelle
+            $('#dataTable').on('click', '.toggle-details', function () {
+                const groupName = $(this).data('target');
+                const groupData = groupsData[groupName];
+                const tr = $(this).closest('tr');
+                const row = table.row(tr);
+
+                if (!groupData) {
+                    console.error('No data found for group:', groupName);
+                    return;
+                }
+
+                if (row.child.isShown()) {
+                    row.child.hide();
+                    tr.removeClass('shown expanded-row');
+                    $(this).text('Expand').removeClass('btn-primary').addClass('btn-outline-primary');
+                } else {
+                    let childContent = '';
+
+                    if (groupData.type === 'Composite Group' && groupData.children?.length > 0) {
+                        childContent = createChildGroupsTable(groupData.children);
+                    }
+
+                    if (groupData.hosts?.length > 0) {
+                        childContent += createHostTable(groupData.hosts);
+                    }
+                    if (groupData.networks?.length > 0) {
+                        childContent += createNetworkTable(groupData.networks);
+                    }
+                    if (groupData.ranges?.length > 0) {
+                        childContent += createRangeTable(groupData.ranges);
+                    }
+
+                    if (childContent) {
+                        row.child(childContent).show();
+                        tr.addClass('shown expanded-row');
+                        $(this).text('Collapse').removeClass('btn-outline-primary').addClass('btn-primary');
+                    }
+                }
+            });
+
+            function createHostTable(hosts) {
+                let rows = '';
+                hosts.forEach(host => {
+                    rows += `
                     <tr>
-                        <th>Host Name</th>
-                        <th>IP Address</th>
-                        <th>Description</th>
+                        <td>${host.host_obje_adi}</td>
+                        <td>${host.ip}</td>
+                        <td>${host.description || 'N/A'}</td>
                     </tr>
-                </thead>
-                <tbody>
-                    ${rows}
-                </tbody>
-            </table>
-        `;
-        }
+                `;
+                });
 
-        function createNetworkTable(networks) {
-            let rows = '';
-            networks.forEach(net => {
-                rows += `
-                <tr>
-                    <td>${net.network_obje_adi}</td>
-                    <td>${net.network}</td>
-                    <td>${net.subnet_mask}</td>
-                    <td>${net.description || 'N/A'}</td>
-                </tr>
-            `;
-            });
-
-            return `
-            <table class="table table-bordered child-table">
-                <thead>
-                    <tr>
-                        <th>Network Name</th>
-                        <th>Network</th>
-                        <th>Subnet Mask</th>
-                        <th>Description</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows}
-                </tbody>
-            </table>
-        `;
-        }
-
-        function createRangeTable(ranges) {
-            let rows = '';
-            ranges.forEach(range => {
-                rows += `
-                <tr>
-                    <td>${range.network_range_obje_adi}</td>
-                    <td>${range.range}</td>
-                    <td>${range.description || 'N/A'}</td>
-                </tr>
-            `;
-            });
-
-            return `
-            <table class="table table-bordered child-table">
-                <thead>
-                    <tr>
-                        <th>Range Name</th>
-                        <th>IP Range</th>
-                        <th>Description</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows}
-                </tbody>
-            </table>
-        `;
-        }
-
-        function createChildGroupsTable(children) {
-            let content = '';
-            const hasExpandableChildren = children.some(child => {
-                const childData = groupsData[child];
-                return childData && (childData.hosts?.length || childData.networks?.length || childData.ranges?.length);
-            });
-
-            // Ana tablo oluşturma
-            content += `
-            <div class="mb-4">
+                return `
                 <table class="table table-bordered child-table">
                     <thead>
                         <tr>
-                            <th style="width: 30%">Child Group Name ${hasExpandableChildren ?
-                    `<button class="btn btn-primary btn-sm expand-all-children float-end">Expand All</button>`
-                    : ''}</th>
-                            <th style="width: 25%">Type</th>
-                            <th style="width: 35%">Details</th>
-                            <th style="width: 10%">Action</th>
+                            <th>Host Name</th>
+                            <th>IP Address</th>
+                            <th>Description</th>
                         </tr>
                     </thead>
                     <tbody>
-        `;
-
-            children.forEach(child => {
-                if (groupsData[child]) {
-                    const childData = groupsData[child];
-                    const hasExpandableContent = childData.hosts?.length || childData.networks?.length || childData.ranges?.length;
-
-                    // Child type ve detayları belirleme
-                    let childType = childData.type;
-                    let details = [];
-
-                    if (childData.hosts?.length > 0) {
-                        details.push(`${childData.hosts.length} host(s)`);
-                    }
-                    if (childData.networks?.length > 0) {
-                        details.push(`${childData.networks.length} network(s)`);
-                    }
-                    if (childData.ranges?.length > 0) {
-                        details.push(`${childData.ranges.length} range(s)`);
-                    }
-                    if (childData.children?.length > 0) {
-                        details.push(`${childData.children.length} child group(s)`);
-                    }
-
-                    // If multiple object types exist, update the type
-                    const objectTypes = [];
-                    if (childData.hosts?.length) objectTypes.push('Host');
-                    if (childData.networks?.length) objectTypes.push('Network');
-                    if (childData.ranges?.length) objectTypes.push('Range');
-                    if (objectTypes.length > 1) {
-                        childType = `Composite ${objectTypes.join('/')} Group`;
-                    }
-
-                    content += `
-                        <tr class="child-group-row">
-                            <td><b>${child}</b></td>
-                            <td>${childType}</td>
-                            <td>${details.join(', ')}</td>
-                            <td class="text-center">
-                                ${hasExpandableContent ?
-                            `<button class="toggle-child-details btn btn-sm btn-outline-primary" data-child="${child}">
-                            Expand
-                        </button>`
-                            : ''}
-                            </td>
-                        </tr>
-                        <tr class="child-details-row" id="child-details-${child}" style="display: none;">
-                            <td colspan="4">
-                                <div class="child-content ps-3 pe-3 pt-2 pb-2"></div>
-                            </td>
-                        </tr>
-                    `;
-                }
-            });
-
-            content += `
+                        ${rows}
                     </tbody>
                 </table>
-            </div>
+            `;
+            }
+
+            function createNetworkTable(networks) {
+                let rows = '';
+                networks.forEach(net => {
+                    rows += `
+                    <tr>
+                        <td>${net.network_obje_adi}</td>
+                        <td>${net.network}</td>
+                        <td>${net.subnet_mask}</td>
+                        <td>${net.description || 'N/A'}</td>
+                    </tr>
+                `;
+                });
+
+                return `
+                <table class="table table-bordered child-table">
+                    <thead>
+                        <tr>
+                            <th>Network Name</th>
+                            <th>Network</th>
+                            <th>Subnet Mask</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            `;
+            }
+
+            function createRangeTable(ranges) {
+                let rows = '';
+                ranges.forEach(range => {
+                    rows += `
+                    <tr>
+                        <td>${range.network_range_obje_adi}</td>
+                        <td>${range.range}</td>
+                        <td>${range.description || 'N/A'}</td>
+                    </tr>
+                `;
+                });
+
+                return `
+                <table class="table table-bordered child-table">
+                    <thead>
+                        <tr>
+                            <th>Range Name</th>
+                            <th>IP Range</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            `;
+            }
+
+            function createChildGroupsTable(children) {
+                let content = '';
+                const hasExpandableChildren = children.some(child => {
+                    const childData = groupsData[child];
+                    return childData && (childData.hosts?.length || childData.networks?.length || childData.ranges?.length);
+                });
+
+                // Ana tablo oluşturma
+                content += `
+                <div class="mb-4">
+                    <table class="table table-bordered child-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 30%">Child Group Name ${hasExpandableChildren ?
+                        `<button class="btn btn-primary btn-sm expand-all-children float-end">Expand All</button>`
+                        : ''}</th>
+                                <th style="width: 25%">Type</th>
+                                <th style="width: 35%">Details</th>
+                                <th style="width: 10%">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
             `;
 
-            // Add click handlers
-            setTimeout(() => {
-                // Existing toggle-child-details handler
-                $('.toggle-child-details').on('click', function () {
-                    const childName = $(this).data('child');
-                    toggleChildDetails(childName, $(this));
-                });
+                children.forEach(child => {
+                    if (groupsData[child]) {
+                        const childData = groupsData[child];
+                        const hasExpandableContent = childData.hosts?.length || childData.networks?.length || childData.ranges?.length;
 
-                // New expand-all-children handler
-                $('.expand-all-children').on('click', function () {
-                    const parentTable = $(this).closest('table');
-                    const toggleButtons = parentTable.find('.toggle-child-details');
+                        // Child type ve detayları belirleme
+                        let childType = childData.type;
+                        let details = [];
 
-                    if ($(this).text() === 'Expand All') {
-                        toggleButtons.each(function () {
-                            const childName = $(this).data('child');
-                            const detailsRow = $(`#child-details-${childName}`);
-                            if (!detailsRow.is(':visible')) {
-                                toggleChildDetails(childName, $(this));
-                            }
-                        });
-                        $(this).text('Collapse All');
-                    } else {
-                        toggleButtons.each(function () {
-                            const childName = $(this).data('child');
-                            const detailsRow = $(`#child-details-${childName}`);
-                            if (detailsRow.is(':visible')) {
-                                toggleChildDetails(childName, $(this));
-                            }
-                        });
-                        $(this).text('Expand All');
+                        if (childData.hosts?.length > 0) {
+                            details.push(`${childData.hosts.length} host(s)`);
+                        }
+                        if (childData.networks?.length > 0) {
+                            details.push(`${childData.networks.length} network(s)`);
+                        }
+                        if (childData.ranges?.length > 0) {
+                            details.push(`${childData.ranges.length} range(s)`);
+                        }
+                        if (childData.children?.length > 0) {
+                            details.push(`${childData.children.length} child group(s)`);
+                        }
+
+                        // If multiple object types exist, update the type
+                        const objectTypes = [];
+                        if (childData.hosts?.length) objectTypes.push('Host');
+                        if (childData.networks?.length) objectTypes.push('Network');
+                        if (childData.ranges?.length) objectTypes.push('Range');
+                        if (objectTypes.length > 1) {
+                            childType = `Composite ${objectTypes.join('/')} Group`;
+                        }
+
+                        content += `
+                            <tr class="child-group-row">
+                                <td><b>${child}</b></td>
+                                <td>${childType}</td>
+                                <td>${details.join(', ')}</td>
+                                <td class="text-center">
+                                    ${hasExpandableContent ?
+                                `<button class="toggle-child-details btn btn-sm btn-outline-primary" data-child="${child}">
+                                Expand
+                            </button>`
+                                : ''}
+                                </td>
+                            </tr>
+                            <tr class="child-details-row" id="child-details-${child}" style="display: none;">
+                                <td colspan="4">
+                                    <div class="child-content ps-3 pe-3 pt-2 pb-2"></div>
+                                </td>
+                            </tr>
+                        `;
                     }
                 });
-            }, 0);
 
-            return content;
-        }
+                content += `
+                        </tbody>
+                    </table>
+                </div>
+                `;
 
-        // Helper function to toggle child details
-        function toggleChildDetails(childName, button) {
-            const detailsRow = $(`#child-details-${childName}`);
-            const childData = groupsData[childName];
+                // Add click handlers
+                setTimeout(() => {
+                    // Existing toggle-child-details handler
+                    $('.toggle-child-details').on('click', function () {
+                        const childName = $(this).data('child');
+                        toggleChildDetails(childName, $(this));
+                    });
 
-            if (detailsRow.is(':visible')) {
-                detailsRow.hide();
-                button.text('Expand').removeClass('btn-primary').addClass('btn-outline-primary');
-            } else {
-                let content = '';
+                    // New expand-all-children handler
+                    $('.expand-all-children').on('click', function () {
+                        const parentTable = $(this).closest('table');
+                        const toggleButtons = parentTable.find('.toggle-child-details');
 
-                // Host verileri
-                if (childData.hosts && childData.hosts.length > 0) {
-                    content += createHostTable(childData.hosts);
-                }
+                        if ($(this).text() === 'Expand All') {
+                            toggleButtons.each(function () {
+                                const childName = $(this).data('child');
+                                const detailsRow = $(`#child-details-${childName}`);
+                                if (!detailsRow.is(':visible')) {
+                                    toggleChildDetails(childName, $(this));
+                                }
+                            });
+                            $(this).text('Collapse All');
+                        } else {
+                            toggleButtons.each(function () {
+                                const childName = $(this).data('child');
+                                const detailsRow = $(`#child-details-${childName}`);
+                                if (detailsRow.is(':visible')) {
+                                    toggleChildDetails(childName, $(this));
+                                }
+                            });
+                            $(this).text('Expand All');
+                        }
+                    });
+                }, 0);
 
-                // Network verileri
-                if (childData.networks && childData.networks.length > 0) {
-                    content += createNetworkTable(childData.networks);
-                }
-
-                // Range verileri
-                if (childData.ranges && childData.ranges.length > 0) {
-                    content += createRangeTable(childData.ranges);
-                }
-
-                detailsRow.find('.child-content').html(content);
-                detailsRow.show();
-                button.text('Collapse').removeClass('btn-outline-primary').addClass('btn-primary');
+                return content;
             }
-        }
 
-        // Add download trigger functionality
-        $('#triggerDownload').click(function () {
-            const button = $(this);
-            const statusDiv = $('#downloadStatus');
-            const lastUpdatedDiv = $('#lastUpdated');
+            // Helper function to toggle child details
+            function toggleChildDetails(childName, button) {
+                const detailsRow = $(`#child-details-${childName}`);
+                const childData = groupsData[childName];
 
-            // Disable button and show loading state
-            button.prop('disabled', true);
-            button.html('<i class="fas fa-spinner fa-spin"></i> Downloading...');
-            statusDiv.html('<div class="alert alert-info">Downloading files...</div>');
+                if (detailsRow.is(':visible')) {
+                    detailsRow.hide();
+                    button.text('Expand').removeClass('btn-primary').addClass('btn-outline-primary');
+                } else {
+                    let content = '';
 
-            // Make the API call
-            $.ajax({
-                url: '/trigger-download',
-                method: 'POST',
-                success: function (response) {
-                    if (response.status === 'success') {
-                        statusDiv.html(`<div class="alert alert-success">${response.message}</div>`);
-                        lastUpdatedDiv.html(`Last updated: ${response.last_updated}`);
-                        // Reload the page to show new data
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 2000);
-                    } else {
-                        statusDiv.html(`<div class="alert alert-warning">${response.message}</div>`);
+                    // Host verileri
+                    if (childData.hosts && childData.hosts.length > 0) {
+                        content += createHostTable(childData.hosts);
                     }
-                },
-                error: function (xhr) {
-                    statusDiv.html(`<div class="alert alert-danger">Error: ${xhr.responseJSON?.message || 'Unknown error occurred'}</div>`);
-                },
-                complete: function () {
-                    // Re-enable button and restore original text
-                    button.prop('disabled', false);
-                    button.html('<i class="fas fa-sync-alt"></i> Download Latest Files');
+
+                    // Network verileri
+                    if (childData.networks && childData.networks.length > 0) {
+                        content += createNetworkTable(childData.networks);
+                    }
+
+                    // Range verileri
+                    if (childData.ranges && childData.ranges.length > 0) {
+                        content += createRangeTable(childData.ranges);
+                    }
+
+                    detailsRow.find('.child-content').html(content);
+                    detailsRow.show();
+                    button.text('Collapse').removeClass('btn-outline-primary').addClass('btn-primary');
                 }
+            }
+
+            // Add download trigger functionality
+            $('#triggerDownload').click(function () {
+                const button = $(this);
+                const statusDiv = $('#downloadStatus');
+                const lastUpdatedDiv = $('#lastUpdated');
+
+                // Disable button and show loading state
+                button.prop('disabled', true);
+                button.html('<i class="fas fa-spinner fa-spin"></i> Downloading...');
+                statusDiv.html('<div class="alert alert-info">Downloading files...</div>');
+
+                // Make the API call
+                $.ajax({
+                    url: '/trigger-download',
+                    method: 'POST',
+                    success: function (response) {
+                        if (response.status === 'success') {
+                            statusDiv.html(`<div class="alert alert-success">${response.message}</div>`);
+                            lastUpdatedDiv.html(`Last updated: ${response.last_updated}`);
+                            // Reload the page to show new data
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 2000);
+                        } else {
+                            statusDiv.html(`<div class="alert alert-warning">${response.message}</div>`);
+                        }
+                    },
+                    error: function (xhr) {
+                        statusDiv.html(`<div class="alert alert-danger">Error: ${xhr.responseJSON?.message || 'Unknown error occurred'}</div>`);
+                    },
+                    complete: function () {
+                        // Re-enable button and restore original text
+                        button.prop('disabled', false);
+                        button.html('<i class="fas fa-sync-alt"></i> Download Latest Files');
+                    }
+                });
             });
-        });
+        }, 1000);
     });
 </script>
 {% endblock %}
