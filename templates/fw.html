@@ -2,7 +2,7 @@
 {% extends 'layout.html' %}
 
 {% block content %}
-<div id="main-div" class="container-sm justify-content-center pb-5 pe-5 ps-5">
+<div id="main-div" class="container-sm justify-content-center pb-5 pe-5 ps-5" style="display: none;">
     <!-- Add loading overlay -->
     <div id="loadingOverlay"
         class="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
@@ -167,7 +167,7 @@
     }
 
     #loadingOverlay.show {
-        display: flex;
+        display: flex !important;
     }
 </style>
 
@@ -202,6 +202,7 @@
             "initComplete": function () {
                 // Hide loading overlay when DataTable is fully initialized
                 $('#loadingOverlay').removeClass('show');
+                $('#main-div').show();
             }
         });
 
