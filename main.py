@@ -35,12 +35,14 @@ users = {
     'user1': 'password1',
     'user2': 'password2',
     'user3': 'password3',
-    'infrafw': 'infrafw'
+    'infrafw': 'infrafw',
+    'admin': 'admin'
 }
 
 # Define user roles and their allowed endpoints
 user_roles = {
     'infrafw': ['/fw'],  # infrafw user can only access /fw
+    'admin': ['/', '/chart', '/fw'],  # admin has access to all endpoints
     'default': ['/', '/chart', '/fw']  # other users can access all endpoints
 }
 
@@ -669,7 +671,8 @@ def firewall():
                                groups=filtered_groups,
                                groups_dict=groups_dict,
                                last_updated=last_updated.strftime('%Y-%m-%d %H:%M:%S') if last_updated else None,
-                               allowed_endpoints=get_user_allowed_endpoints(session['username']))
+                               allowed_endpoints=get_user_allowed_endpoints(session['username']),
+                               username=session['username'])
     else:
         return redirect(url_for('login'))
 

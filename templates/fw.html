@@ -2,7 +2,9 @@
 {% extends 'layout.html' %}
 
 {% block content %}
+<!-- Add Bootstrap Icons CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
 <div id="loadingOverlay"
     class="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
     style="background: rgba(255, 255, 255, 0.8); z-index: 9999;">
@@ -24,6 +26,42 @@
             </div>
         </div>
     </div>
+
+    <!-- Add Statistics Section -->
+    {% if username == 'admin' %}
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Group Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="alert alert-info">
+                                <h6 class="alert-heading">Groups with Single Child</h6>
+                                <p class="mb-0" id="singleChildCount">Calculating...</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="alert alert-warning">
+                                <h6 class="alert-heading">Groups with Only PRD Child</h6>
+                                <p class="mb-0" id="prdOnlyCount">Calculating...</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="alert alert-warning">
+                                <h6 class="alert-heading">Groups with Only DRC Child</h6>
+                                <p class="mb-0" id="drcOnlyCount">Calculating...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="row">
         <div class="col">
             <table id="dataTable" class="table table-striped table-bordered compact" style="width: 100%;">
@@ -205,6 +243,28 @@
         });
 
         const groupsData = JSON.parse('{{ groups_dict|tojson|safe }}');
+
+        // Calculate statistics
+        let singleChildCount = 0;
+        let prdOnlyCount = 0;
+        let drcOnlyCount = 0;
+
+        Object.values(groupsData).forEach(group => {
+            if (group.children && group.children.length === 1) {
+                singleChildCount++;
+                const childName = group.children[0];
+                if (childName.includes('PRD')) {
+                    prdOnlyCount++;
+                } else if (childName.includes('DRC')) {
+                    drcOnlyCount++;
+                }
+            }
+        });
+
+        // Update statistics in the UI
+        $('#singleChildCount').text(`${singleChildCount} groups`);
+        $('#prdOnlyCount').text(`${prdOnlyCount} groups`);
+        $('#drcOnlyCount').text(`${drcOnlyCount} groups`);
 
         // Initialize DataTable with updated configuration
         const table = $('#dataTable').DataTable({
