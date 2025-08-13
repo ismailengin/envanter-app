@@ -12,6 +12,7 @@ import time
 from datetime import datetime
 from dotenv import load_dotenv
 import urllib3
+import pytz
 
 # Disable SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -588,9 +589,10 @@ def download_latest_sharepoint_files():
 
 
 def schedule_daily_download():
-    """Schedule the daily download at 5:00 AM"""
-    schedule.every().day.at("05:00").do(download_latest_sharepoint_files)
-
+    """Schedule the daily download at 5:00 AM Istanbul time"""
+    istanbul_tz = pytz.timezone('Europe/Istanbul')
+    schedule.every().day.at("07:00").timezone(istanbul_tz).do(download_latest_sharepoint_files)
+    print("Doing daily download at 5:00 AM Istanbul time...")
     while True:
         schedule.run_pending()
         time.sleep(60)
