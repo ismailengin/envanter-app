@@ -71,7 +71,7 @@ def parse_fw_file(file_path):
                             group_data['children'].append(value)
                             child_parent_map[value].append(group_name)
             
-            elif line.strip().startswith('TCP Servis Adı:'):
+            elif line.strip().startswith('TCP Servis Adi:'):
                 parts = [p.strip() for p in line.split(',')]
                 port_data = {}
                 for part in parts:
