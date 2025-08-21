@@ -502,6 +502,7 @@ def discover_sharepoint_folders():
 
 def download_latest_sharepoint_files():
     """Download the latest file from each discovered SharePoint folder using NTLM authentication"""
+    print(f"Starting download at {datetime.now(pytz.timezone('Europe/Istanbul')).strftime('%Y-%m-%d %H:%M:%S %Z')}")
     try:
         # Get SharePoint credentials from environment variables
         site_url = os.getenv('SHAREPOINT_SITE_URL')
@@ -591,8 +592,8 @@ def download_latest_sharepoint_files():
 def schedule_daily_download():
     """Schedule the daily download at 5:00 AM Istanbul time"""
     istanbul_tz = pytz.timezone('Europe/Istanbul')
-    schedule.every().day.at("07:00").timezone(istanbul_tz).do(download_latest_sharepoint_files)
-    print("Doing daily download at 5:00 AM Istanbul time...")
+    schedule.every().day.at("05:00").timezone(istanbul_tz).do(download_latest_sharepoint_files)
+    print("Scheduled daily download for 5:00 AM Istanbul time...")
     while True:
         schedule.run_pending()
         time.sleep(60)
@@ -735,10 +736,14 @@ def update_os_handler():
 
 
 if __name__ == '__main__':
+    # Do initial download
+    download_latest_sharepoint_files()
+    
     # Start the scheduler in a separate thread
     import threading
     scheduler_thread = threading.Thread(target=schedule_daily_download)
     scheduler_thread.daemon = True
     scheduler_thread.start()
-    download_latest_sharepoint_files()
-    app.run(debug=True)
+    
+    # Run Flask without debug mode for Docker
+    app.run(host='0.0.0.0', debug=False)
