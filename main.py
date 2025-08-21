@@ -591,9 +591,17 @@ def download_latest_sharepoint_files():
 
 def schedule_daily_download():
     """Schedule the daily download at 5:00 AM Istanbul time"""
-    istanbul_tz = pytz.timezone('Europe/Istanbul')
-    schedule.every().day.at("05:00").timezone(istanbul_tz).do(download_latest_sharepoint_files)
+    def job():
+        # Convert current time to Istanbul time to check if we should run
+        istanbul_tz = pytz.timezone('Europe/Istanbul')
+        ist_time = datetime.now(istanbul_tz)
+        print(f"Current time in Istanbul: {ist_time.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+        download_latest_sharepoint_files()
+
+    # Schedule for 5 AM every day
+    schedule.every().day.at("05:00").do(job)
     print("Scheduled daily download for 5:00 AM Istanbul time...")
+    
     while True:
         schedule.run_pending()
         time.sleep(60)
