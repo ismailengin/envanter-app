@@ -96,10 +96,12 @@
                             {{ group.ranges|length }} range(s)
                             {% elif group.type == 'Composite Group' %}
                             {{ group.children|length }} child group(s)
+                            {% elif group.type == 'Port Object Group' %}
+                            {{ group.ports|length }} port object(s)
                             {% endif %}
                         </td>
                         <td>
-                            {% if group.hosts or group.networks or group.ranges or group.children %}
+                            {% if group.hosts or group.networks or group.ranges or group.children or group.ports %}
                             <span class="toggle-details btn btn-sm btn-outline-primary"
                                 data-target="{{ group.name }}">Expand</span>
                             {% endif %}
@@ -331,6 +333,9 @@
                 if (groupData.ranges?.length > 0) {
                     childContent += createRangeTable(groupData.ranges);
                 }
+                if (groupData.ports?.length > 0) {
+                    childContent += createPortTable(groupData.ports);
+                }
 
                 if (childContent) {
                     row.child(childContent).show();
@@ -416,6 +421,34 @@
                     <tr>
                         <th>Range Name</th>
                         <th>IP Range</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
+        `;
+        }
+
+        function createPortTable(ports) {
+            let rows = '';
+            ports.forEach(port => {
+                rows += `
+                <tr>
+                    <td>${port.tcp_servis_adı}</td>
+                    <td>${port.port}</td>
+                    <td>${port.aciklama || 'N/A'}</td>
+                </tr>
+            `;
+            });
+
+            return `
+            <table class="table table-bordered child-table">
+                <thead>
+                    <tr>
+                        <th>Port Object Name</th>
+                        <th>Port</th>
                         <th>Description</th>
                     </tr>
                 </thead>

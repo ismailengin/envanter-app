@@ -662,14 +662,16 @@ def firewall():
                 # Write merged content to file
                 with open(file_path, 'w', encoding='utf-8') as f:
                     f.write(merged_content)
-                last_updated = datetime.now()
+                # Use Istanbul timezone for displayed timestamps
+                last_updated = datetime.now(pytz.timezone('Europe/Istanbul'))
             else:
                 # If download fails, use sample file
                 file_path = 'static/samplefw.txt'
         else:
             print("Using existing merged file...")
             if os.path.exists(file_path):
-                last_updated = datetime.fromtimestamp(os.path.getmtime(file_path))
+                # Make the timestamp timezone-aware in Istanbul time
+                last_updated = datetime.fromtimestamp(os.path.getmtime(file_path), pytz.timezone('Europe/Istanbul'))
 
         groups = parse_fw_file(file_path)
         groups_dict = {g['name']: g for g in groups}
@@ -710,7 +712,7 @@ def trigger_download():
                 'status': 'success',
                 'message': f'Successfully downloaded and merged {len(downloaded_files)} files',
                 'files': list(downloaded_files.keys()),
-                'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                'last_updated': datetime.now(pytz.timezone('Europe/Istanbul')).strftime('%Y-%m-%d %H:%M:%S')
             })
         else:
             return jsonify({

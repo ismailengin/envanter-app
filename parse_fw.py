@@ -23,7 +23,8 @@ def parse_fw_file(file_path):
             'hosts': [],
             'networks': [],
             'ranges': [],
-            'children': []
+            'children': [],
+            'ports': []  # Added for service groups
         }
 
         for line in lines:
@@ -31,7 +32,7 @@ def parse_fw_file(file_path):
             if not line:
                 continue
 
-            if line.startswith('Grup ADI:'):
+            if line.startswith('Grup ADI:') or line.startswith('Servis Grup ADI:'):
                 group_name = line.split(':', 1)[1].strip()
 
             elif line.startswith('Host Obje Adi:'):
@@ -69,10 +70,21 @@ def parse_fw_file(file_path):
                         if (key != "Tipi"):
                             group_data['children'].append(value)
                             child_parent_map[value].append(group_name)
+            
+            elif line.strip().startswith('TCP Servis Adı:'):
+                parts = [p.strip() for p in line.split(',')]
+                port_data = {}
+                for part in parts:
+                    if ':' in part:
+                        key, value = [x.strip().strip('"') for x in part.split(':', 1)]
+                        port_data[key.lower().replace(' ', '_')] = value
+                group_data['ports'].append(port_data)
 
         if group_name:
             # Determine group type
-            if 'glb' in group_name.lower() or group_data['children']:
+            if group_data['ports']:
+                group_type = 'Port Object Group'
+            elif 'glb' in group_name.lower() or group_data['children']:
                 group_type = 'Composite Group'
             elif group_data['hosts']:
                 group_type = 'Host Group'
@@ -89,10 +101,12 @@ def parse_fw_file(file_path):
                 'hosts': group_data['hosts'],
                 'networks': group_data['networks'],
                 'ranges': group_data['ranges'],
+                'ports': group_data['ports'],
                 'children': group_data['children'],
                 'all_hosts': group_data['hosts'].copy(),  # Will include child hosts
                 'all_networks': group_data['networks'].copy(),  # Will include child networks
-                'all_ranges': group_data['ranges'].copy()  # Will include child ranges
+                'all_ranges': group_data['ranges'].copy(),  # Will include child ranges
+                'all_ports': group_data['ports'].copy()  # Will include child ports
             }
 
             groups.append(group_obj)
@@ -115,6 +129,7 @@ def parse_fw_file(file_path):
                 group['all_hosts'].extend(child_group['all_hosts'])
                 group['all_networks'].extend(child_group['all_networks'])
                 group['all_ranges'].extend(child_group['all_ranges'])
+                group['all_ports'].extend(child_group['all_ports'])
 
                 # Add child's children to the processing queue
                 queue.extend(child_group['children'])
