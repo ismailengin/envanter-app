@@ -19,16 +19,16 @@ Grup ADI: bar-nw-obje
 Network Obje Adi: network_10.81.81.81, Network: 10.81.81.81, Subnet Mask: 255.255.255.254, Aciklama: N/A
 ================================
 Servis Grup ADI: foo-bar-1
-    TCP Servis Adı: TCP_8080, Port: 8080, Aciklama: N/A
+    TCP Servis Adi: TCP_8080, Port: 8080, Aciklama: N/A
 ================================
 Servis Grup ADI: foo-bar-2
-    TCP Servis Adı: TCP_3306, Port: 3306, Aciklama: N/A
+    TCP Servis Adi: TCP_3306, Port: 3306, Aciklama: N/A
 ================================
 Servis Grup ADI: foo-bar-3
-    TCP Servis Adı: TCP_6379, Port: 6379, Aciklama: N/A
+    TCP Servis Adi: TCP_6379, Port: 6379, Aciklama: N/A
 ================================
 Servis Grup ADI: foo-bar-4
-    TCP Servis Adı: TCP_22, Port: 22, Aciklama: N/A
+    TCP Servis Adi: TCP_22, Port: 22, Aciklama: N/A
 ================================
 Servis Grup ADI: foo-bar-5
-    TCP Servis Adı: TCP_5000, Port: 5000, Aciklama: N/A
+    TCP Servis Adi: TCP_5000, Port: 5000, Aciklama: N/A
