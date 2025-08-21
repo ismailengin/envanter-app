@@ -116,6 +116,11 @@
                             network.description }}
                             {% endfor %}
                             {% endif %}
+                            {% if group.children %}
+                            {% for child in group.children %}
+                            {{ child.name }}
+                            {% endfor %}
+                            {% endif %}
                             {% if group.all_ranges %}
                             {% for range in group.all_ranges %}
                             {{ range.network_range_obje_adi }} {{ range.range }} {{ range.description }}
