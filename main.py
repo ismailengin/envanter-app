@@ -596,10 +596,20 @@ def schedule_daily_download():
         istanbul_tz = pytz.timezone('Europe/Istanbul')
         ist_time = datetime.now(istanbul_tz)
         print(f"Current time in Istanbul: {ist_time.strftime('%Y-%m-%d %H:%M:%S %Z')}")
-        download_latest_sharepoint_files()
+        # Download latest files and, if any were downloaded, merge into the merged_fw file
+        downloaded_files = download_latest_sharepoint_files()
+        if downloaded_files:
+            try:
+                merged_file_path = os.path.join('static', 'merged_fw.txt')
+                merged_content = merge_fw_files(downloaded_files.values())
+                with open(merged_file_path, 'w', encoding='utf-8') as f:
+                    f.write(merged_content)
+                print(f"Scheduled job: merged {len(downloaded_files)} files into {merged_file_path}")
+            except Exception as e:
+                print(f"Scheduled job: failed to merge downloaded files: {e}")
 
     # Schedule for 5 AM every day
-    schedule.every().day.at("07:00").do(job)
+    schedule.every().day.at("04:00").do(job)
     print("Scheduled daily download for 7:00 AM Istanbul time...")
     
     while True:
