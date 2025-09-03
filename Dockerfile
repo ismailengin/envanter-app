@@ -17,6 +17,8 @@ EXPOSE 5000
 ENV FLASK_APP=main.py
 ENV PYTHONUNBUFFERED=1
 
+RUN chmod -R 777 /app/static
+
 # Run app.py when the container launches
 CMD ["python", "main.py"]
 
