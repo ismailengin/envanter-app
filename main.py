@@ -509,6 +509,7 @@ def download_latest_sharepoint_files():
         username = os.getenv('SHAREPOINT_USERNAME')
         password = os.getenv('SHAREPOINT_PASSWORD')
         domain = os.getenv('SHAREPOINT_DOMAIN')
+        root_folder = os.getenv('SHAREPOINT_ROOT_FOLDER', '/Shared Documents')
 
         # Discover folders
         folder_urls = discover_sharepoint_folders()
@@ -560,7 +561,7 @@ def download_latest_sharepoint_files():
 
                 # Download the file
                 file_url = latest_file['ServerRelativeUrl'].split('/')
-                file_actual_url = '/'+'/'.join(file_url[2:])
+                file_actual_url = '/' + '/'.join(file_url[(len(root_folder.split('/')) -1):])
                 file_name = os.path.basename(file_actual_url)
                 download_path = os.path.join('static', file_name)
 
