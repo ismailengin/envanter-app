@@ -107,26 +107,8 @@
                             {% endif %}
                         </td>
                         <td class="d-none">
-                            {% if group.all_hosts %}
-                            {% for host in group.all_hosts %}
-                            {{ host.host_obje_adi }} {{ host.ip }} {{ host.description }}
-                            {% endfor %}
-                            {% endif %}
-                            {% if group.all_networks %}
-                            {% for network in group.all_networks %}
-                            {{ network.network_obje_adi }} {{ network.network }} {{ network.subnet_mask }} {{
-                            network.description }}
-                            {% endfor %}
-                            {% endif %}
-                            {% if group.children %}
-                            {% for child in group.children %}
-                            {{ child }}
-                            {% endfor %}
-                            {% endif %}
-                            {% if group.all_ranges %}
-                            {% for range in group.all_ranges %}
-                            {{ range.network_range_obje_adi }} {{ range.range }} {{ range.description }}
-                            {% endfor %}
+                            {% if group.search_terms %}
+                            {{ group.search_terms }}
                             {% endif %}
                         </td>
                     </tr>

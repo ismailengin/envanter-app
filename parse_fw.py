@@ -1,6 +1,25 @@
 # parse_fw.py
 import re
 from collections import defaultdict
+import socket
+
+
+def extract_ip_from_string(text):
+    # Regex to find an IPv4 address
+    ip_pattern = r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b'
+    match = re.search(ip_pattern, text)
+    if match:
+        return match.group(0)
+    return None
+
+
+def resolve_ip(ip_address):
+    try:
+        hostname, _, _ = socket.gethostbyaddr(ip_address)
+        return hostname
+    except socket.herror:
+        # print(f"Could not resolve IP: {ip_address}")
+        return None
 
 
 def parse_fw_file(file_path):
@@ -42,6 +61,22 @@ def parse_fw_file(file_path):
                     if ':' in part:
                         key, value = [x.strip().strip('"') for x in part.split(':', 1)]
                         host_data[key.lower().replace(' ', '_')] = value
+                
+                # Extract IP from hostname if present
+                if 'host_obje_adi' in host_data:
+                    host_name_for_ip_extraction = host_data['host_obje_adi']
+                    extracted_ip = extract_ip_from_string(host_name_for_ip_extraction)
+                    
+                    # If an IP is extracted, try to resolve its hostname (PTR lookup)
+                    if extracted_ip:
+                        # Add the extracted IP to host_data if not already present as 'ip'
+                        if 'ip' not in host_data:
+                            host_data['ip'] = extracted_ip
+                            
+                        resolved_hostname = resolve_ip(extracted_ip)
+                        if resolved_hostname:
+                            host_data['ptr_hostname'] = resolved_hostname
+                
                 group_data['hosts'].append(host_data)
 
             elif line.startswith('Network Range Obje Adi:'):
@@ -134,5 +169,55 @@ def parse_fw_file(file_path):
                 # Add child's children to the processing queue
                 queue.extend(child_group['children'])
                 processed_children.add(child_name)
+
+    # After all groups are processed and child data aggregated, populate the search_terms
+    for group in groups:
+        search_terms = [group['name'], group['type']]
+
+        # Add host details
+        for host in group['all_hosts']:
+            if 'host_obje_adi' in host:
+                search_terms.append(host['host_obje_adi'])
+            if 'ip' in host:
+                search_terms.append(host['ip'])
+            if 'ptr_hostname' in host:
+                search_terms.append(host['ptr_hostname'])
+            if 'description' in host:
+                search_terms.append(host['description'])
+
+        # Add network details
+        for network in group['all_networks']:
+            if 'network_obje_adi' in network:
+                search_terms.append(network['network_obje_adi'])
+            if 'network' in network:
+                search_terms.append(network['network'])
+            if 'subnet_mask' in network:
+                search_terms.append(network['subnet_mask'])
+            if 'description' in network:
+                search_terms.append(network['description'])
+
+        # Add range details
+        for r_range in group['all_ranges']:
+            if 'network_range_obje_adi' in r_range:
+                search_terms.append(r_range['network_range_obje_adi'])
+            if 'range' in r_range:
+                search_terms.append(r_range['range'])
+            if 'description' in r_range:
+                search_terms.append(r_range['description'])
+
+        # Add port details
+        for port in group['all_ports']:
+            if 'tcp_servis_adi' in port:
+                search_terms.append(port['tcp_servis_adi'])
+            if 'port' in port:
+                search_terms.append(port['port'])
+            if 'aciklama' in port:
+                search_terms.append(port['aciklama'])
+
+        # Add child group names
+        search_terms.extend(group['children'])
+
+        # Clean and join search terms
+        group['search_terms'] = ' '.join(filter(None, [str(s).strip() for s in search_terms]))
 
     return groups
