@@ -2,6 +2,9 @@
 import re
 from collections import defaultdict
 import socket
+import os
+
+DEBUG_DNS_RESOLUTION = os.environ.get('DEBUG_DNS_RESOLUTION', 'false').lower() == 'true'
 
 
 def extract_ip_from_string(text):
@@ -16,9 +19,12 @@ def extract_ip_from_string(text):
 def resolve_ip(ip_address):
     try:
         hostname, _, _ = socket.gethostbyaddr(ip_address)
+        if DEBUG_DNS_RESOLUTION:
+            print(f"DEBUG DNS: Resolved IP {ip_address} to hostname {hostname}")
         return hostname
     except socket.herror:
-        # print(f"Could not resolve IP: {ip_address}")
+        if DEBUG_DNS_RESOLUTION:
+            print(f"DEBUG DNS: Could not resolve IP: {ip_address}")
         return None
 
 
