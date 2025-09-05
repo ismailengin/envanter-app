@@ -9,7 +9,7 @@ DEBUG_DNS_RESOLUTION = os.environ.get('DEBUG_DNS_RESOLUTION', 'false').lower() =
 
 def extract_ip_from_string(text):
     # Regex to find an IPv4 address
-    ip_pattern = r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b'
+    ip_pattern = r'(?<!\d)(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?!\d)'
     match = re.search(ip_pattern, text)
     if match:
         return match.group(0)
@@ -225,5 +225,8 @@ def parse_fw_file(file_path):
 
         # Clean and join search terms
         group['search_terms'] = ' '.join(filter(None, [str(s).strip() for s in search_terms]))
+
+        if DEBUG_DNS_RESOLUTION:
+            print(f"DEBUG SEARCH: Group '{group['name']}' search terms: {group['search_terms']}")
 
     return groups
