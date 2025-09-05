@@ -1,0 +1,73 @@
+/* Add this style block after your script imports */
+.table thead th {
+    background-color: #212529;
+    /* Bootstrap dark color */
+    color: white;
+}
+
+.child-table thead th {
+    background-color: #212529;
+    color: white;
+}
+
+/* Add styles for pagination buttons */
+.page-item.active .page-link {
+    background-color: #212529;
+    border-color: #212529;
+}
+
+.page-link {
+    color: #212529;
+}
+
+.page-link:hover {
+    color: #000;
+}
+
+/* Child table styles */
+.child-table {
+    margin-bottom: 0;
+}
+
+.child-table thead th {
+    background-color: #212529;
+    color: white;
+    vertical-align: middle;
+}
+
+.child-content {
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    padding: 1rem;
+}
+
+.child-group-row {
+    background-color: white;
+}
+
+.child-details-row td {
+    padding: 0 !important;
+}
+
+/* Sub-table styles */
+.child-content .table {
+    margin-bottom: 0;
+}
+
+.child-content .table thead th {
+    background-color: #495057;
+}
+
+/* Add this for expanded rows */
+.expanded-row {
+    background-color: #f8f9fa !important;
+}
+
+/* Add loading overlay styles */
+#loadingOverlay {
+    display: none !important;
+}
+
+#loadingOverlay.show {
+    display: flex !important;
+}

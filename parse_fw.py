@@ -3,8 +3,15 @@ import re
 from collections import defaultdict
 import socket
 import os
+import logging
 
-DEBUG_DNS_RESOLUTION = os.environ.get('DEBUG_DNS_RESOLUTION', 'false').lower() == 'true'
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+# DEBUG_DNS_RESOLUTION is primarily for controlling when debug messages are *printed* in the original code.
+# With the logging module, we can control it via logging level.
+# If DEBUG_DNS_RESOLUTION is true, set the level to DEBUG for this module.
+if os.environ.get('DEBUG_DNS_RESOLUTION', 'false').lower() == 'true':
+    logging.getLogger().setLevel(logging.DEBUG)
 
 
 def extract_ip_from_string(text):
@@ -19,12 +26,10 @@ def extract_ip_from_string(text):
 def resolve_ip(ip_address):
     try:
         hostname, _, _ = socket.gethostbyaddr(ip_address)
-        if DEBUG_DNS_RESOLUTION:
-            print(f"DEBUG DNS: Resolved IP {ip_address} to hostname {hostname}")
+        logging.debug(f"DEBUG DNS: Resolved IP {ip_address} to hostname {hostname}")
         return hostname
     except socket.herror:
-        if DEBUG_DNS_RESOLUTION:
-            print(f"DEBUG DNS: Could not resolve IP: {ip_address}")
+        logging.debug(f"DEBUG DNS: Could not resolve IP: {ip_address}")
         return None
 
 
@@ -226,7 +231,6 @@ def parse_fw_file(file_path):
         # Clean and join search terms
         group['search_terms'] = ' '.join(filter(None, [str(s).strip() for s in search_terms]))
 
-        if DEBUG_DNS_RESOLUTION:
-            print(f"DEBUG SEARCH: Group '{group['name']}' search terms: {group['search_terms']}")
+        logging.debug(f"DEBUG SEARCH: Group '{group['name']}' search terms: {group['search_terms']}")
 
     return groups
