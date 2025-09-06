@@ -87,7 +87,7 @@ def save_user(dn, username, data, memberships):
             break
     user = User(dn, username, data, role)
     users[dn] = user
-    print(f"User {username} saved with role: {role} and memberships: {memberships}")
+    # print(f"User {username} saved with role: {role} and memberships: {memberships}")
     return user
 
 # Replace these with your MSSQL database credentials
