@@ -32,7 +32,14 @@
             {% endif %}
         </ul>
         <div class="d-flex">
+            {% if current_user.is_authenticated %}
+            <span class="navbar-text text-white me-3">
+                Logged in as: {{ current_user.username }}
+            </span>
             <a href="{{ url_for('logout') }}" class="btn btn-primary mt-3 me-2 mb-2">Logout</a>
+            {% else %}
+            <a href="{{ url_for('login') }}" class="btn btn-primary mt-3 me-2 mb-2">Login</a>
+            {% endif %}
         </div>
     </nav>
 </div>
