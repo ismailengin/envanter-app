@@ -37,12 +37,12 @@ app.config['LDAP_HOST'] = os.environ.get('LDAP_HOST', 'ldap.forumsys.com')
 app.config['LDAP_PORT'] = int(os.environ.get('LDAP_PORT', 389))
 app.config['LDAP_USE_SSL'] = os.environ.get('LDAP_USE_SSL', 'False') == 'True'
 app.config['LDAP_BASE_DN'] = os.environ.get('LDAP_BASE_DN', 'dc=example,dc=com')
-# app.config['LDAP_USER_DN'] = os.environ.get('LDAP_USER_DN', 'ou=scientists')
 app.config['LDAP_USER_RDN_ATTR'] = os.environ.get('LDAP_USER_RDN_ATTR', 'uid')
 app.config['LDAP_USER_LOGIN_ATTR'] = os.environ.get('LDAP_USER_LOGIN_ATTR', 'uid')
 app.config['LDAP_BIND_USER_DN'] = os.environ.get('LDAP_BIND_USER_DN', 'cn=read-only-admin,dc=example,dc=com')
 app.config['LDAP_BIND_USER_PASSWORD'] = os.environ.get('LDAP_BIND_USER_PASSWORD', 'password')
 app.config['LDAP_GROUP_DN'] = os.environ.get('LDAP_GROUP_DN', '')
+app.config['LDAP_USER_SEARCH_SCOPE'] = os.environ.get('LDAP_USER_SEARCH_SCOPE', 'LEVEL')
 app.config['LDAP_GROUP_OBJECT_FILTER'] = '(objectclass=*)'
 app.config["WTF_CSRF_ENABLED"] = False
 
@@ -927,7 +927,7 @@ def update_os_handler():
 if __name__ == '__main__':
     # Do initial download
     test_env = os.getenv('TEST', 'False').lower() in ['true', '1', 't']
-    
+
     if not test_env:
         download_latest_sharepoint_files()
     
