@@ -48,6 +48,35 @@ user_roles = {
 }
 
 
+PARSED_FW_DATA_PATH = os.path.join('static', 'parsed_fw_data.json')
+
+
+def process_and_cache_fw_data(file_path):
+    """Parses the firewall file, generates groups, and caches them to a JSON file."""
+    print(f"Processing and caching firewall data from {file_path}...")
+    try:
+        groups = parse_fw_file(file_path)
+        groups_dict = {g['name']: g for g in groups}
+
+        # Filter out groups that are children of other groups
+        child_groups = {child for group in groups for child in group['children']}
+        filtered_groups = [group for group in groups if group['name'] not in child_groups]
+
+        cached_data = {
+            'timestamp': datetime.now(pytz.timezone('Europe/Istanbul')).isoformat(),
+            'groups': filtered_groups,
+            'groups_dict': groups_dict
+        }
+
+        with open(PARSED_FW_DATA_PATH, 'w', encoding='utf-8') as f:
+            json.dump(cached_data, f, indent=4)
+        print(f"Successfully cached parsed firewall data to {PARSED_FW_DATA_PATH}")
+        return True
+    except Exception as e:
+        print(f"Error processing and caching firewall data: {e}")
+        return False
+
+
 def is_valid_credentials(username, password):
     # Check if the provided username and password are valid
     return users.get(username) == password
@@ -583,11 +612,19 @@ def download_latest_sharepoint_files():
                 print(f"Unexpected error processing folder {folder_url}: {str(e)}")
                 continue
 
-        return downloaded_files
-
     except Exception as e:
         print(f"Unexpected error in main process: {str(e)}")
         return {}
+
+    # After all files are downloaded, if any, merge and cache
+    if downloaded_files:
+        merged_file_path = os.path.join('static', 'merged_fw.txt')
+        merged_content = merge_fw_files(downloaded_files.values())
+        with open(merged_file_path, 'w', encoding='utf-8') as f:
+            f.write(merged_content)
+        process_and_cache_fw_data(merged_file_path)
+
+    return downloaded_files
 
 
 def schedule_daily_download():
@@ -606,6 +643,7 @@ def schedule_daily_download():
                 with open(merged_file_path, 'w', encoding='utf-8') as f:
                     f.write(merged_content)
                 print(f"Scheduled job: merged {len(downloaded_files)} files into {merged_file_path}")
+                process_and_cache_fw_data(merged_file_path)
             except Exception as e:
                 print(f"Scheduled job: failed to merge downloaded files: {e}")
 
@@ -673,19 +711,61 @@ def firewall():
                 # Write merged content to file
                 with open(file_path, 'w', encoding='utf-8') as f:
                     f.write(merged_content)
-                # Use Istanbul timezone for displayed timestamps
-                last_updated = datetime.now(pytz.timezone('Europe/Istanbul'))
+
+                process_and_cache_fw_data(file_path) # Cache the new data
+                last_updated = datetime.now(pytz.timezone('Europe/Istanbul')) # Update last_updated
+
             else:
                 # If download fails, use sample file
                 file_path = 'static/samplefw.txt'
+                process_and_cache_fw_data(file_path) # Cache sample data as well
+                last_updated = datetime.now(pytz.timezone('Europe/Istanbul'))
+
         else:
             print("Using existing merged file...")
             if os.path.exists(file_path):
-                # Make the timestamp timezone-aware in Istanbul time
                 last_updated = datetime.fromtimestamp(os.path.getmtime(file_path), pytz.timezone('Europe/Istanbul'))
 
-        groups = parse_fw_file(file_path)
-        groups_dict = {g['name']: g for g in groups}
+        # Try to load from cache first
+        if os.path.exists(PARSED_FW_DATA_PATH):
+            try:
+                with open(PARSED_FW_DATA_PATH, 'r', encoding='utf-8') as f:
+                    cached_data = json.load(f)
+                cached_timestamp = datetime.fromisoformat(cached_data['timestamp'])
+
+                # Check if cache is fresh enough (e.g., less than an hour old or newer than merged_fw.txt)
+                if (datetime.now(pytz.timezone('Europe/Istanbul')) - cached_timestamp).total_seconds() < 3600 or \
+                   (os.path.exists(file_path) and cached_timestamp >= datetime.fromtimestamp(os.path.getmtime(file_path), pytz.timezone('Europe/Istanbul'))):
+                    groups = cached_data['groups']
+                    groups_dict = cached_data['groups_dict']
+                    print("Loaded firewall data from cache.")
+                else:
+                    print("Cached data is stale, re-parsing...")
+                    if process_and_cache_fw_data(file_path):
+                        with open(PARSED_FW_DATA_PATH, 'r', encoding='utf-8') as f:
+                            cached_data = json.load(f)
+                            groups = cached_data['groups']
+                            groups_dict = cached_data['groups_dict']
+                    else:
+                        # Fallback if parsing and caching fails
+                        groups = parse_fw_file(file_path)
+                        groups_dict = {g['name']: g for g in groups}
+            except Exception as e:
+                print(f"Error loading from cache, re-parsing: {e}")
+                groups = parse_fw_file(file_path)
+                groups_dict = {g['name']: g for g in groups}
+        else:
+            # If no cache file, parse and create cache
+            print("No cache file found, parsing and creating...")
+            if process_and_cache_fw_data(file_path):
+                with open(PARSED_FW_DATA_PATH, 'r', encoding='utf-8') as f:
+                    cached_data = json.load(f)
+                    groups = cached_data['groups']
+                    groups_dict = cached_data['groups_dict']
+            else:
+                # Fallback if parsing and caching fails
+                groups = parse_fw_file(file_path)
+                groups_dict = {g['name']: g for g in groups}
 
         # Filter out groups that are children of other groups
         child_groups = {child for group in groups for child in group['children']}
@@ -719,6 +799,8 @@ def trigger_download():
             with open(merged_file_path, 'w', encoding='utf-8') as f:
                 f.write(merged_content)
 
+            process_and_cache_fw_data(merged_file_path)
+            
             return jsonify({
                 'status': 'success',
                 'message': f'Successfully downloaded and merged {len(downloaded_files)} files',
