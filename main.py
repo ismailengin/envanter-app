@@ -504,19 +504,16 @@ def login():
         if use_ldap:
             # LDAP Authentication
             logging.debug(f"Attempting LDAP authentication for user: {username}")
-            response = ldap_manager.authenticate(username, password)
-            if response.status == AuthenticationResponseStatus.success:
+            form = LDAPLoginForm()
+            # response = ldap_manager.authenticate(username, password)
+            # if response.status == AuthenticationResponseStatus.success:
+            if form.validate_on_submit():
                 logging.debug(f"LDAP authentication successful for user: {username}")
-                logging.debug(f"User attributes are {response.user_id}")
-                form = LDAPLoginForm()
-                
-                if form.validate_on_submit():
+                logging.debug(f"User attributes are {form.user}")
                 # Successfully logged in, We can now access the saved user object
                 # via form.user.
-                    login_user(form.user)  # Tell flask-login to log them in.
-                    return redirect('/')  # Send them home
-                user = username
-                return redirect(url_for('index'))
+                login_user(form.user)  # Tell flask-login to log them in.
+                return redirect('/')  # Send them home
             else:
                 logging.warning(f"LDAP authentication failed for user: {username} with status: {response.status}")
                 error='Invalid credentials.'
