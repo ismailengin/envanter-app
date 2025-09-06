@@ -18,15 +18,26 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from flask_ldap3_login.forms import LDAPLoginForm
 import logging
 
+load_dotenv()
+
 # Disable SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger('flask_ldap3_login')
-logger.addHandler(logging.StreamHandler())
+log_level = os.environ.get('LOG_LEVEL', 'DEBUG').upper()
+log_level_map = {
+    'DEBUG': logging.DEBUG,
+    'INFO': logging.INFO,
+    'WARNING': logging.WARNING,
+    'ERROR': logging.ERROR,
+    'CRITICAL': logging.CRITICAL
+}
 
-load_dotenv()
+root_logger_level = log_level_map.get(log_level, logging.DEBUG)
+logging.basicConfig(level=root_logger_level, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger('flask_ldap3_login')
+logger.setLevel(root_logger_level) # Set the level for flask_ldap3_login logger
+logger.addHandler(logging.StreamHandler())
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')
