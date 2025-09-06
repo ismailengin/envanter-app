@@ -43,7 +43,8 @@ app.config['LDAP_BIND_USER_DN'] = os.environ.get('LDAP_BIND_USER_DN', 'cn=read-o
 app.config['LDAP_BIND_USER_PASSWORD'] = os.environ.get('LDAP_BIND_USER_PASSWORD', 'password')
 app.config['LDAP_GROUP_DN'] = os.environ.get('LDAP_GROUP_DN', '')
 app.config['LDAP_USER_SEARCH_SCOPE'] = os.environ.get('LDAP_USER_SEARCH_SCOPE', 'LEVEL')
-app.config['LDAP_GROUP_OBJECT_FILTER'] = '(objectclass=*)'
+app.config['LDAP_GROUP_OBJECT_FILTER'] = os.environ.get('LDAP_GROUP_OBJECT_FILTER', '(objectclass=groupOfUniqueNames)')
+app.config['LDAP_GROUP_MEMBERS_ATTR'] = os.environ.get('LDAP_GROUP_MEMBERS_ATTR', 'uniqueMember')
 app.config["WTF_CSRF_ENABLED"] = False
 
 # Enable Flask-LDAP3-Login debug logging
@@ -59,10 +60,11 @@ login_manager.login_view = 'login'
 
 # User class
 class User(UserMixin):
-    def __init__(self, dn, username, data):
+    def __init__(self, dn, username, data, role=None):
         self.dn = dn
         self.username = username
         self.data = data
+        self.role = role
 
     def get_id(self):
         return self.dn
@@ -76,8 +78,15 @@ def load_user(user_id):
 
 @ldap_manager.save_user
 def save_user(dn, username, data, memberships):
-    user = User(dn, username, data)
+    admin_group = os.environ.get('ADMIN_LDAP_GROUP')
+    role = "infrafw"  # Default role
+    for group in memberships:
+        if "cn" in group and admin_group in group["cn"]:
+            role = "admin"
+            break
+    user = User(dn, username, data, role)
     users[dn] = user
+    print(f"User {username} saved with role: {role} and memberships: {memberships}")
     return user
 
 # Replace these with your MSSQL database credentials
@@ -139,9 +148,10 @@ def is_valid_credentials(username, password):
     return users.get(username) == password
 
 
-def get_user_allowed_endpoints(username):
-    # Return allowed endpoints for the user
-    return user_roles.get(username, user_roles['default'])
+def get_user_allowed_endpoints():
+    # Return allowed endpoints for the user based on their role
+    allowed_endpoints = user_roles.get(current_user.role, user_roles['default'])
+    return allowed_endpoints
 
 
 # Number of entries per page
@@ -472,7 +482,7 @@ def get_runtime_stats():
 def index():
     if current_user.is_authenticated:
         # Check if user has access to this endpoint
-        if '/' not in get_user_allowed_endpoints(current_user.username):
+        if '/' not in get_user_allowed_endpoints():
             return redirect(url_for('firewall'))
 
         envanter_table_name = "BackendEnvanter"
@@ -486,7 +496,7 @@ def index():
         return render_template(
             'index.html', username=current_user.username,
             all_columns=all_columns, selected_columns=selected_columns, columns=columns, detail_columns=detail_columns,
-            data=data, allowed_endpoints=get_user_allowed_endpoints(current_user.username))
+            data=data, allowed_endpoints=get_user_allowed_endpoints())
     else:
         return redirect(url_for('login'))
 
@@ -509,10 +519,11 @@ def login():
             # if response.status == AuthenticationResponseStatus.success:
             if form.validate_on_submit():
                 logging.debug(f"LDAP authentication successful for user: {username}")
-                logging.debug(f"User attributes are {form.user}")
+                logging.debug(f"User attributes are {form.user.data}, DN: {form.user.dn}, Role: {form.user.role}")
                 # Successfully logged in, We can now access the saved user object
                 # via form.user.
                 login_user(form.user)  # Tell flask-login to log them in.
+                logging.debug(f"Logged in LDAP user: {current_user.username} with role: {current_user.role}")
                 return redirect('/')  # Send them home
             else:
                 # logging.warning(f"LDAP authentication failed for user: {username} with status: ")
@@ -523,8 +534,9 @@ def login():
             logging.debug(f"Attempting local authentication for user: {username}")
             if is_valid_credentials(username, password):
                 logging.debug(f"Local authentication successful for user: {username}")
-                user = User(username, username, {}) # Local auth doesn't have dn, data
+                user = User(username, username, {}, role='default') # Local auth doesn't have dn, data, assign default role
                 login_user(user)
+                logging.debug(f"Logged in local user: {current_user.username} with role: {current_user.role}")
                 flash('Logged in successfully.', 'success')
                 return redirect(url_for('index'))
             else:
@@ -547,12 +559,12 @@ def logout():
 def deneme():
     if current_user.is_authenticated:
         # Check if user has access to this endpoint
-        if '/chart' not in get_user_allowed_endpoints(current_user.username):
+        if '/chart' not in get_user_allowed_endpoints():
             return redirect(url_for('fw'))
 
         runtime_stats = get_runtime_stats()
         return render_template('chart.html', runtime_stats=runtime_stats,
-                               allowed_endpoints=get_user_allowed_endpoints(current_user.username),
+                               allowed_endpoints=get_user_allowed_endpoints(),
                                username=current_user.username)
     else:
         return redirect(url_for('login'))
@@ -776,7 +788,7 @@ def should_download_files():
 def firewall():
     if current_user.is_authenticated:
         # Check if user has access to this endpoint
-        if '/fw' not in get_user_allowed_endpoints(current_user.username):
+        if '/fw' not in get_user_allowed_endpoints():
             return redirect(url_for('index'))
 
         file_path = os.path.join('static', 'merged_fw.txt')
@@ -858,7 +870,7 @@ def firewall():
                                groups=filtered_groups,
                                groups_dict=groups_dict,
                                last_updated=last_updated.strftime('%Y-%m-%d %H:%M:%S') if last_updated else None,
-                               allowed_endpoints=get_user_allowed_endpoints(current_user.username),
+                               allowed_endpoints=get_user_allowed_endpoints(),
                                username=current_user.username)
     else:
         return redirect(url_for('login'))
