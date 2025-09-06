@@ -3,6 +3,7 @@ import re
 from collections import defaultdict
 import socket
 import os
+import dns.resolver # Import dnspython
 
 DEBUG_DNS_RESOLUTION = os.environ.get('DEBUG_DNS_RESOLUTION', 'false').lower() == 'true'
 
@@ -17,15 +18,41 @@ def extract_ip_from_string(text):
 
 
 def resolve_ip(ip_address):
+    resolved_hostnames = []
     try:
-        hostname, _, _ = socket.gethostbyaddr(ip_address)
+        # Try to get hostnames using dnspython for multiple PTR records
+        try:
+            ptr_records = dns.resolver.resolve(ip_address, "PTR")
+            for ptr in ptr_records:
+                hostname = str(ptr.target).rstrip('.')
+                resolved_hostnames.append(hostname)
+                if DEBUG_DNS_RESOLUTION:
+                    print(f"DEBUG DNS: Resolved IP {ip_address} to hostname {hostname} via PTR")
+        except dns.resolver.NXDOMAIN:
+            if DEBUG_DNS_RESOLUTION:
+                print(f"DEBUG DNS: No PTR record for {ip_address}")
+        except dns.resolver.NoAnswer:
+            if DEBUG_DNS_RESOLUTION:
+                print(f"DEBUG DNS: No answer for PTR query for {ip_address}")
+        except Exception as e:
+            if DEBUG_DNS_RESOLUTION:
+                print(f"DEBUG DNS: dnspython error resolving {ip_address}: {e}")
+
+        # Fallback to socket.gethostbyaddr if no PTR records found or dnspython failed
+        if not resolved_hostnames:
+            try:
+                hostname, _, _ = socket.gethostbyaddr(ip_address)
+                resolved_hostnames.append(hostname)
+                if DEBUG_DNS_RESOLUTION:
+                    print(f"DEBUG DNS: Resolved IP {ip_address} to hostname {hostname} via gethostbyaddr fallback")
+            except socket.herror:
+                if DEBUG_DNS_RESOLUTION:
+                    print(f"DEBUG DNS: socket.gethostbyaddr could not resolve IP: {ip_address}")
+    except Exception as e:
         if DEBUG_DNS_RESOLUTION:
-            print(f"DEBUG DNS: Resolved IP {ip_address} to hostname {hostname}")
-        return hostname
-    except socket.herror:
-        if DEBUG_DNS_RESOLUTION:
-            print(f"DEBUG DNS: Could not resolve IP: {ip_address}")
-        return None
+            print(f"DEBUG DNS: General error resolving {ip_address}: {e}")
+
+    return resolved_hostnames if resolved_hostnames else None
 
 
 def parse_fw_file(file_path):
@@ -79,9 +106,9 @@ def parse_fw_file(file_path):
                         if 'ip' not in host_data:
                             host_data['ip'] = extracted_ip
                             
-                        resolved_hostname = resolve_ip(extracted_ip)
-                        if resolved_hostname:
-                            host_data['ptr_hostname'] = resolved_hostname
+                        resolved_hostnames = resolve_ip(extracted_ip)
+                        if resolved_hostnames:
+                            host_data['ptr_hostnames'] = resolved_hostnames # Store as a list
                 
                 group_data['hosts'].append(host_data)
 
@@ -186,8 +213,8 @@ def parse_fw_file(file_path):
                 search_terms.append(host['host_obje_adi'])
             if 'ip' in host:
                 search_terms.append(host['ip'])
-            if 'ptr_hostname' in host:
-                search_terms.append(host['ptr_hostname'])
+            if 'ptr_hostnames' in host: # Check for the new key
+                search_terms.extend(host['ptr_hostnames']) # Extend with all resolved hostnames
             if 'description' in host:
                 search_terms.append(host['description'])
 
