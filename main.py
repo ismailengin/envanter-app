@@ -865,9 +865,10 @@ def firewall():
 
 
 @app.route('/trigger-download', methods=['POST'])
+@login_required
 def trigger_download():
-    if 'username' not in session:
-        return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
+    # if 'username' not in session:
+    #     return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
 
     try:
         # Download the latest files from SharePoint
