@@ -515,7 +515,7 @@ def login():
                 login_user(form.user)  # Tell flask-login to log them in.
                 return redirect('/')  # Send them home
             else:
-                logging.warning(f"LDAP authentication failed for user: {username} with status: {response.status}")
+                # logging.warning(f"LDAP authentication failed for user: {username} with status: ")
                 error='Invalid credentials.'
                 return render_template('login.html',error=error)
         else:
