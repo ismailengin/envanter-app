@@ -926,7 +926,10 @@ def update_os_handler():
 
 if __name__ == '__main__':
     # Do initial download
-    download_latest_sharepoint_files()
+    test_env = os.getenv('TEST', 'False').lower() in ['true', '1', 't']
+    
+    if not test_env:
+        download_latest_sharepoint_files()
     
     # Start the scheduler in a separate thread
     import threading
