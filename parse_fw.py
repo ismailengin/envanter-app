@@ -22,7 +22,9 @@ def resolve_ip(ip_address):
     try:
         # Try to get hostnames using dnspython for multiple PTR records
         try:
-            ptr_records = dns.resolver.resolve(ip_address, "PTR")
+            # Removed explicit lifetime parameter; dnspython will use its default or system configured timeout.
+            rev_name = dns.reversename.from_address(ip_address)
+            ptr_records = dns.resolver.resolve(rev_name, "PTR")
             for ptr in ptr_records:
                 hostname = str(ptr.target).rstrip('.')
                 resolved_hostnames.append(hostname)
