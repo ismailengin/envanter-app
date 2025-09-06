@@ -43,6 +43,7 @@ app.config['LDAP_BIND_USER_DN'] = os.environ.get('LDAP_BIND_USER_DN', 'cn=read-o
 app.config['LDAP_BIND_USER_PASSWORD'] = os.environ.get('LDAP_BIND_USER_PASSWORD', 'password')
 app.config['LDAP_GROUP_DN'] = os.environ.get('LDAP_GROUP_DN', '')
 app.config['LDAP_USER_SEARCH_SCOPE'] = os.environ.get('LDAP_USER_SEARCH_SCOPE', 'LEVEL')
+app.config['LDAP_GROUP_SEARCH_SCOPE'] = os.environ.get('LDAP_GROUP_SEARCH_SCOPE', 'LEVEL')
 app.config['LDAP_GROUP_OBJECT_FILTER'] = os.environ.get('LDAP_GROUP_OBJECT_FILTER', '(objectclass=groupOfUniqueNames)')
 app.config['LDAP_GROUP_MEMBERS_ATTR'] = os.environ.get('LDAP_GROUP_MEMBERS_ATTR', 'uniqueMember')
 app.config["WTF_CSRF_ENABLED"] = False
