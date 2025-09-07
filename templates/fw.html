@@ -17,10 +17,12 @@
 
     <div class="row mb-3">
         <div class="col">
+            {% if current_user.role == 'admin' %}
             <button id="triggerDownload" class="btn btn-primary">
                 <i class="fas fa-sync-alt"></i> Download Latest Files
             </button>
             <div id="downloadStatus" class="mt-2"></div>
+            {% endif %}
             <div id="lastUpdated" class="mt-2 text-muted">
                 Last updated: {{ last_updated if last_updated else 'Never' }}
             </div>
@@ -28,7 +30,7 @@
     </div>
 
     <!-- Add Statistics Section -->
-    {% if current_user.username == 'admin' %}
+    {% if current_user.role == 'admin' %}
     <div class="row mb-4">
         <div class="col">
             <div class="card">
@@ -264,6 +266,10 @@
                     "targets": [4], // Hidden column index
                     "visible": false,
                     "searchable": true
+                },
+                {
+                    "targets": [1], // Type column index
+                    "orderable": false // Disable sorting for this column
                 }
             ],
             // Add Bootstrap styling
@@ -280,6 +286,30 @@
                 // Hide loading overlay when DataTable is fully initialized
                 $('#loadingOverlay').removeClass('show');
                 $('#main-div').show();
+
+                this.api().columns().every(function () {
+                    const column = this;
+                    // Only apply to the 'Type' column (index 1)
+                    if (column.index() === 1) {
+                        const select = $('<select class="form-select form-select-sm"><option value="">All Types</option></select>')
+                            .appendTo($(column.header()).empty())
+                            .on('change', function () {
+                                const val = $.fn.dataTable.util.escapeRegex(
+                                    $(this).val()
+                                );
+                                column
+                                    .search(val ? '^' + val + '$' : '', true, false)
+                                    .draw();
+                            });
+
+                        column.data().unique().sort().each(function (d, j) {
+                            select.append('<option value="' + d + '">' + d + '</option>');
+                        });
+                    } else {
+                        // Restore original header text for other columns
+                        $(column.header()).text(column.header().textContent);
+                    }
+                });
             }
         });
 
