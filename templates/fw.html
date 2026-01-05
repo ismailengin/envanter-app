@@ -160,6 +160,14 @@
         color: #000;
     }
 
+    /* Exact match indicator styles */
+    .exact-match-indicator {
+        color: #990928;
+        font-size: 1.2em;
+        margin-left: 5px;
+        /* vertical-align: middle; */
+    }
+
     /* Child table styles */
     .child-table {
         margin-bottom: 0;
@@ -311,6 +319,114 @@
                     }
                 });
             }
+        });
+
+        // Function to check if a value exactly matches the search term
+        function isExactMatch(value, searchTerm) {
+            if (!searchTerm || !value) return false;
+            // Trim and case-insensitive comparison
+            return value.toString().trim().toLowerCase() === searchTerm.trim().toLowerCase();
+        }
+
+        // Function to check if a row has exact match in any searchable field
+        function checkRowForExactMatch(searchTerm, groupData) {
+            if (!searchTerm || !groupData) return false;
+            
+            // Check group name
+            if (isExactMatch(groupData.name || '', searchTerm)) return true;
+            
+            // Check hosts
+            if (groupData.hosts) {
+                for (let host of groupData.hosts) {
+                    if (isExactMatch(host.host_obje_adi || '', searchTerm) ||
+                        isExactMatch(host.ip || '', searchTerm)) {
+                        return true;
+                    }
+                }
+            }
+            
+            // Check networks
+            if (groupData.networks) {
+                for (let net of groupData.networks) {
+                    if (isExactMatch(net.network_obje_adi || '', searchTerm) ||
+                        isExactMatch(net.network || '', searchTerm)) {
+                        return true;
+                    }
+                }
+            }
+            
+            // Check ranges
+            if (groupData.ranges) {
+                for (let range of groupData.ranges) {
+                    if (isExactMatch(range.network_range_obje_adi || '', searchTerm) ||
+                        isExactMatch(range.range || '', searchTerm)) {
+                        return true;
+                    }
+                }
+            }
+            
+            // Check ports
+            if (groupData.ports) {
+                for (let port of groupData.ports) {
+                    if (isExactMatch(port.tcp_servis_adi || '', searchTerm) ||
+                        isExactMatch(port.port || '', searchTerm)) {
+                        return true;
+                    }
+                }
+            }
+            
+            // Check child groups
+            if (groupData.children) {
+                for (let childName of groupData.children) {
+                    if (isExactMatch(childName || '', searchTerm)) {
+                        return true;
+                    }
+                    // Also check child group data recursively
+                    const childData = groupsData[childName];
+                    if (childData && checkRowForExactMatch(searchTerm, childData)) {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        }
+
+        // Function to add/remove exact match indicators
+        function updateExactMatchIndicators() {
+            const searchTerm = table.search();
+            
+            // Remove all existing indicators first
+            $('.exact-match-indicator').remove();
+            
+            if (!searchTerm) {
+                return; // No search term, no indicators needed
+            }
+            
+            // Check each visible row
+            table.rows({ search: 'applied' }).every(function () {
+                const row = this.node();
+                const rowData = this.data();
+                const groupName = $(row).data('id');
+                const groupData = groupsData[groupName];
+                
+                if (groupData && checkRowForExactMatch(searchTerm, groupData)) {
+                    // Add star indicator to the beginning of the group name
+                    const groupNameBold = $(row).find('td:first b');
+                    if (!groupNameBold.find('.exact-match-indicator').length && !groupNameBold.prev('.exact-match-indicator').length) {
+                        groupNameBold.prepend('<span class="exact-match-indicator" title="Exact match">★ </span>');
+                    }
+                }
+            });
+        }
+
+        // Listen to search events
+        table.on('search.dt', function () {
+            setTimeout(updateExactMatchIndicators, 100);
+        });
+
+        table.on('draw.dt', function () {
+            updateExactMatchIndicators();
         });
 
         // Click handler'ı güncelle
