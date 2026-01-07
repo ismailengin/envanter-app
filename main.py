@@ -681,10 +681,11 @@ def download_latest_sharepoint_files():
                     print(f"No files found in folder: {folder_url}")
                     continue
 
-                # Filter files for .txt extension and '2025' in name
+                # Filter files for .txt extension and '2026' in name
+                # TODO: Make this dynamic and not hardcoded
                 filtered_files = [
                     f for f in files_data
-                    if f['Name'].lower().endswith('.txt') and '2025' in f['Name']
+                    if f['Name'].lower().endswith('.txt') and '2026' in f['Name']
                 ]
 
                 if not filtered_files:
