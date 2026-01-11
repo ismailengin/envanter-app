@@ -204,11 +204,7 @@ body {
     border-bottom: 1px solid var(--gray-200);
 }
 
-.table tbody tr:hover {
-    background-color: var(--gray-50);
-    transform: scale(1.01);
-    box-shadow: var(--shadow-sm);
-}
+
 
 .table tbody td {
     padding: var(--spacing-md) var(--spacing-lg);
