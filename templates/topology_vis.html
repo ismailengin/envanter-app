@@ -17,11 +17,9 @@
     }
     
     #details-panel {
-        width: 350px;
-        min-height: 650px;
         padding: var(--spacing-xl);
         overflow-y: auto;
-    }
+    } 
     
     #details-panel h3 {
         color: var(--primary);
@@ -116,16 +114,18 @@
         // Node'ları ekle
         if (nodesData && nodesData.length > 0) {
             nodesData.forEach(node => {
+                const img = node.image || (node.group === 'database' ? '/static/database.svg' : node.group === 'netscaler' ? '/static/netscaler.svg' : (node.runtime_image || '/static/tomcat.png'));
                 cyElements.push({
                     data: {
                         id: String(node.id),
                         label: node.label || node.id,
                         group: node.group || 'jvm',
-                        details: node.details || null
+                        details: node.details || null,
+                        image: img
                     }
                 });
             });
-        } else {
+        } else { 
             console.warn('Hiç node bulunamadı!');
             const cyContainer = document.getElementById('cy');
             if (cyContainer) {
@@ -165,65 +165,45 @@
                 elements: cyElements,
                 style: [
                     {
-                        selector: 'node[group="jvm"]',
+                        selector: 'node',
                         style: {
-                            'background-color': '#ffc107',
-                            'border-color': '#ff9800',
+                            'background-image': 'data(image)',
+                            'background-fit': 'cover',
+                            'background-opacity': 1,
                             'border-width': 3,
-                            'shape': 'round-rectangle',
-                            'width': 'label',
-                            'height': 'label',
-                            'padding': '10px',
+                            'border-color': '#ffffff',
+                            'shape': 'ellipse',
+                            'width': 72,
+                            'height': 72,
                             'label': 'data(label)',
-                            'font-size': '14px',
-                            'font-weight': 'bold',
-                            'text-valign': 'center',
+                            'font-size': '12px',
+                            'text-valign': 'bottom',
                             'text-halign': 'center',
+                            'text-margin-y': 6,
                             'color': '#212529',
                             'text-wrap': 'wrap',
-                            'text-max-width': '150px'
+                            'text-max-width': '120px'
+                        }
+                    },
+                    {
+                        selector: 'node[group="jvm"]',
+                        style: {
+                            'border-color': '#ff9800'
                         }
                     },
                     {
                         selector: 'node[group="netscaler"]',
                         style: {
-                            'background-color': '#17a2b8',
-                            'border-color': '#138496',
-                            'border-width': 3,
-                            'shape': 'hexagon',
-                            'width': 'label',
-                            'height': 'label',
-                            'padding': '10px',
-                            'label': 'data(label)',
-                            'font-size': '14px',
-                            'font-weight': 'bold',
-                            'text-valign': 'center',
-                            'text-halign': 'center',
-                            'color': 'white',
-                            'text-wrap': 'wrap',
-                            'text-max-width': '150px'
+                            'border-color': '#138496'
                         }
                     },
                     {
                         selector: 'node[group="database"]',
                         style: {
-                            'background-color': '#28a745',
-                            'border-color': '#218838',
-                            'border-width': 3,
-                            'shape': 'ellipse',
-                            'width': 'label',
-                            'height': 'label',
-                            'padding': '10px',
-                            'label': 'data(label)',
-                            'font-size': '14px',
-                            'font-weight': 'bold',
-                            'text-valign': 'center',
-                            'text-halign': 'center',
-                            'color': 'white',
-                            'text-wrap': 'wrap',
-                            'text-max-width': '150px'
+                            'border-color': '#218838'
                         }
                     },
+
                     {
                         selector: 'node',
                         style: {

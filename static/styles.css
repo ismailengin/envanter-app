@@ -431,7 +431,10 @@ h2 {
     padding: var(--spacing-xl);
     border-radius: 0 0 var(--radius-xl) var(--radius-xl);
     box-shadow: var(--shadow-lg);
-}
+    display: flex;
+    gap: var(--spacing-lg);
+    align-items: stretch;
+} 
 
 #cy {
     border: 2px solid var(--gray-200);
@@ -445,7 +448,11 @@ h2 {
     border: 2px solid var(--gray-200);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
-}
+    width: 360px;
+    min-height: 650px;
+    padding: var(--spacing-xl);
+    overflow-y: auto;
+} 
 
 .detail-value {
     border-left: 3px solid var(--primary);
@@ -507,6 +514,32 @@ h2 {
     border-radius: var(--radius-md);
     padding: var(--spacing-sm) var(--spacing-md);
 }
+
+/* Inline suggestions for search fields */
+.suggestions {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 9999;
+    padding: 4px;
+}
+.suggestion-item {
+    padding: 8px 10px;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+}
+.suggestion-item:hover,
+.suggestion-item[aria-selected="true"] {
+    background: var(--primary);
+    color: white;
+} 
 
 /* Utility Classes */
 .bg-white {

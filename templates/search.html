@@ -140,8 +140,10 @@
                 <select class="form-select filter-operator" name="filters[${rowId}][operator]" required>
                     ${operators.map(op => `<option value="${op.value}" ${operator === op.value ? 'selected' : ''}>${op.label}</option>`).join('')}
                 </select>
-                <input type="text" class="form-control filter-value" name="filters[${rowId}][value]" placeholder="Değer" value="${value}" list="datalist-${rowId}" autocomplete="off" required>
-                <datalist id="datalist-${rowId}"></datalist>
+            <div style="flex:1; position:relative;">
+                <input type="text" class="form-control filter-value" name="filters[${rowId}][value]" placeholder="Değer" value="${value}" autocomplete="off" required aria-autocomplete="list" aria-controls="suggestions-${rowId}">
+                <div class="suggestions" id="suggestions-${rowId}" role="listbox" hidden></div>
+            </div> 
                 <input type="hidden" class="filter-logic" name="filters[${rowId}][logic]" value="${logic}">
                 <button type="button" class="btn btn-sm btn-outline-danger remove-filter-btn" onclick="removeFilter('${rowId}')">
                     <i class="bi bi-trash"></i>
@@ -199,8 +201,10 @@
     
     // Field değiştiğinde autocomplete listesini güncelle
     function updateAutocomplete(rowId, field) {
-        const datalist = $(`#datalist-${rowId}`);
-        datalist.empty();
+        const suggestions = $(`#suggestions-${rowId}`);
+        const input = $(`.filter-row[data-row-id="${rowId}"] .filter-value`);
+        suggestions.empty();
+        suggestions.prop('hidden', true);
         
         if (!field || !fieldValues) return;
         
@@ -208,10 +212,39 @@
         
         values.forEach(val => {
             if (val) {
-                datalist.append(`<option value="${val}">`);
+                const item = $(`<div class="suggestion-item" role="option">${val}</div>`);
+                item.on('mousedown', function(e) {
+                    e.preventDefault(); // prevent input blur before click
+                    input.val(val);
+                    suggestions.prop('hidden', true);
+                });
+                suggestions.append(item);
             }
         });
-    }
+        
+        // attach input handlers once
+        if (!input.data('suggestAttached')) {
+            input.on('input', function() {
+                const q = $(this).val().toLowerCase();
+                let any = false;
+                suggestions.children('.suggestion-item').each(function() {
+                    const text = $(this).text().toLowerCase();
+                    const match = q.length === 0 ? true : text.indexOf(q) !== -1;
+                    $(this).toggle(match);
+                    if (match) any = true;
+                });
+                suggestions.prop('hidden', !any);
+            });
+            input.on('focus', function() {
+                suggestions.children('.suggestion-item').show();
+                suggestions.prop('hidden', suggestions.children('.suggestion-item').length === 0);
+            });
+            input.on('blur', function() {
+                setTimeout(function() { suggestions.prop('hidden', true); }, 150);
+            });
+            input.data('suggestAttached', true);
+        }
+    } 
     
     // Field değişikliğini dinle
     $(document).on('change', '.filter-field', function() {
