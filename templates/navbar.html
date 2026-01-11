@@ -1,45 +1,140 @@
-<div class="container-xl pe-5 ps-5">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-5">
-        <div class="navbar-brand ms-2" href="#">MWBE</div>
-        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            {% if '/' in allowed_endpoints %}
-            <li class="nav-item">
-                <a class="nav-link link" aria-current="page" href="{{ url_for('index')}}">Envanter</a>
-            </li>
-            {% endif %}
-            {% if '/chart' in allowed_endpoints %}
-            <li class="nav-item">
-                <a class="nav-link link" aria-current="page" href="{{ url_for('deneme')}}">Runtime Chart</a>
-            </li>
-            {% endif %}
-            {% if '/fw' in allowed_endpoints %}
-            <li class="nav-item">
-                <a class="nav-link link" aria-current="page" href="{{ url_for('firewall')}}">Firewall Objects</a>
-            </li>
-            {% endif %}
-            {% if '/' in allowed_endpoints %}
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle link" href="#" id="navbarDarkDropdownMenuLink" role="button"
-                    data-bs-toggle="dropdown" aria-expanded="false">
-                    Useful Links
-                </a>
-                <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="navbarDarkDropdownMenuLink">
-                    <li><a class="dropdown-item" href="#">Action</a></li>
-                    <li><a class="dropdown-item" href="#">Another action</a></li>
-                    <li><a class="dropdown-item" href="#">Something else here</a></li>
-                </ul>
-            </li>
-            {% endif %}
-        </ul>
-        <div class="d-flex">
-            {% if current_user.is_authenticated %}
-            <span class="navbar-text text-white me-3">
-                Logged in as: {{ current_user.username }}
-            </span>
-            <a href="{{ url_for('logout') }}" class="btn btn-primary mt-3 me-2 mb-2">Logout</a>
-            {% else %}
-            <a href="{{ url_for('login') }}" class="btn btn-primary mt-3 me-2 mb-2">Login</a>
-            {% endif %}
-        </div>
+<!-- Sidebar Navigation -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu">
+    <i class="bi bi-list"></i>
+</button>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <a href="{{ url_for('index') if (allowed_endpoints is defined and '/' in allowed_endpoints) or allowed_endpoints is not defined else '#' }}" class="sidebar-brand">
+            <i class="bi bi-server"></i>
+            <span>MWBE</span>
+        </a>
+        <button class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Close menu">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+    
+    <nav class="sidebar-nav">
+        {% if allowed_endpoints is not defined or '/' in allowed_endpoints %}
+        <li class="sidebar-nav-item">
+            <a href="{{ url_for('index') }}" class="sidebar-nav-link {% if request.endpoint == 'index' %}active{% endif %}">
+                <i class="bi bi-table"></i>
+                <span>Envanter</span>
+            </a>
+        </li>
+        {% endif %}
+        
+        {% if allowed_endpoints is not defined or '/search' in allowed_endpoints or '/' in allowed_endpoints %}
+        <li class="sidebar-nav-item">
+            <a href="{{ url_for('search_inventory') }}" class="sidebar-nav-link {% if request.endpoint == 'search_inventory' %}active{% endif %}">
+                <i class="bi bi-search"></i>
+                <span>Ara</span>
+            </a>
+        </li>
+        {% endif %}
+        
+        {% if allowed_endpoints is not defined or '/chart' in allowed_endpoints %}
+        <li class="sidebar-nav-item">
+            <a href="{{ url_for('deneme') }}" class="sidebar-nav-link {% if request.endpoint == 'deneme' %}active{% endif %}">
+                <i class="bi bi-pie-chart"></i>
+                <span>Runtime Chart</span>
+            </a>
+        </li>
+        {% endif %}
+        
+        {% if allowed_endpoints is not defined or '/fw' in allowed_endpoints %}
+        <li class="sidebar-nav-item">
+            <a href="{{ url_for('firewall') }}" class="sidebar-nav-link {% if request.endpoint == 'firewall' %}active{% endif %}">
+                <i class="bi bi-shield-check"></i>
+                <span>Firewall Objects</span>
+            </a>
+        </li>
+        {% endif %}
+        
+        {% if allowed_endpoints is not defined or '/' in allowed_endpoints %}
+        <li class="sidebar-nav-item">
+            <a href="#" class="sidebar-nav-link" id="usefulLinksToggle">
+                <i class="bi bi-link-45deg"></i>
+                <span>Useful Links</span>
+                <i class="bi bi-chevron-down ms-auto" id="usefulLinksChevron" style="font-size: 0.875rem; transition: transform var(--transition-base);"></i>
+            </a>
+            <div class="sidebar-dropdown" id="usefulLinksDropdown">
+                <a href="#" class="sidebar-dropdown-item">Action</a>
+                <a href="#" class="sidebar-dropdown-item">Another action</a>
+                <a href="#" class="sidebar-dropdown-item">Something else here</a>
+            </div>
+        </li>
+        {% endif %}
     </nav>
-</div>
+    
+    <div class="sidebar-footer">
+        {% if current_user is defined and current_user.is_authenticated %}
+        <div class="sidebar-user-info">
+            <i class="bi bi-person-circle"></i>
+            <span>{{ current_user.username }}</span>
+        </div>
+        <a href="{{ url_for('logout') }}" class="sidebar-logout-btn">
+            <i class="bi bi-box-arrow-right"></i>
+            <span>Logout</span>
+        </a>
+        {% else %}
+        <a href="{{ url_for('login') }}" class="sidebar-logout-btn">
+            <i class="bi bi-box-arrow-in-right"></i>
+            <span>Login</span>
+        </a>
+        {% endif %}
+    </div>
+</aside>
+
+<script>
+    // Mobile menu toggle
+    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
+    
+    function openSidebar() {
+        sidebar.classList.add('show');
+        sidebarOverlay.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeSidebar() {
+        sidebar.classList.remove('show');
+        sidebarOverlay.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+    
+    if (mobileMenuToggle) {
+        mobileMenuToggle.addEventListener('click', openSidebar);
+    }
+    
+    if (sidebarCloseBtn) {
+        sidebarCloseBtn.addEventListener('click', closeSidebar);
+    }
+    
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', closeSidebar);
+    }
+    
+    // Useful Links dropdown toggle
+    const usefulLinksToggle = document.getElementById('usefulLinksToggle');
+    const usefulLinksDropdown = document.getElementById('usefulLinksDropdown');
+    
+    if (usefulLinksToggle && usefulLinksDropdown) {
+        usefulLinksToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            usefulLinksDropdown.classList.toggle('show');
+            const chevron = document.getElementById('usefulLinksChevron');
+            if (chevron) {
+                chevron.style.transform = usefulLinksDropdown.classList.contains('show') 
+                    ? 'rotate(180deg)' 
+                    : 'rotate(0deg)';
+            }
+        });
+    }
+    
+    // Close sidebar when clicking outside on desktop (if needed)
+    // This is handled by the overlay on mobile
+</script>

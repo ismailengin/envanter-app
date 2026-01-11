@@ -1,9 +1,41 @@
 version: "3.8"
 services:  
+  mongodb:
+    image: mongo:7.0
+    container_name: inventory-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=inventory
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/inventory --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   envanter:
     hostname: envanter
     image: localhost/envanter-app
+    container_name: inventory-api
+    restart: unless-stopped
     environment:
       - DB_SERVER=localhost
+      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGODB_DB=inventory
+      - MONGODB_COLLECTION=java_apps
+      - FLASK_PORT=5000
+      - FASTAPI_PORT=8000
     ports:
-      - 5000:5000
+      - "5000:5000"  # Flask web UI
+      - "8000:8000"  # FastAPI inventory API
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    volumes:
+      - ./discovery.py:/app/discovery.py:ro
+
+volumes:
+  mongodb_data:

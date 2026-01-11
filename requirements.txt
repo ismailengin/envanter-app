@@ -1,10 +1,18 @@
+# FastAPI Backend Dependencies
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+motor==3.3.2
+pymongo==4.6.1
+python-dotenv==1.0.0
+
+# Legacy Flask Dependencies (for existing functionality)
 Flask==3.0.0
 pyodbc==5.0.1
 PyPika==0.48.9
 requests==2.31.0
 requests-ntlm==1.2.0
 schedule==1.2.1
-python-dotenv==1.0.0
 pytz==2025.2
 dnspython==2.7.0
 Flask-SQLAlchemy==3.1.1

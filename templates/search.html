@@ -1,0 +1,310 @@
+{% extends 'layout.html' %}
+
+{% block head %}
+    <title>Envanterde Ara</title>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2><i class="bi bi-search"></i> Envanterde Uygulama Arama</h2>
+    <p class="text-muted">Gelişmiş filtreleme ile uygulamaları arayın</p>
+</div>
+    
+    <form id="search-form" class="card mb-4" method="GET">
+        <div class="card-body">
+            <div id="filters-container">
+                <!-- Filtreler buraya eklenecek -->
+            </div>
+            <button type="button" class="btn btn-outline-secondary mt-3" id="add-filter-btn">
+                <i class="bi bi-plus-circle"></i> Filtre Ekle
+            </button>
+            <div class="mt-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Ara
+                </button>
+                <button type="button" class="btn btn-outline-danger" id="clear-filters-btn">
+                    <i class="bi bi-x-circle"></i> Temizle
+                </button>
+            </div>
+        </div>
+    </form>
+    
+    {% if results is defined %}
+    <div class="card">
+        <div class="card-body">
+            <h5 class="mb-3">
+                <i class="bi bi-list-check"></i> Sonuçlar 
+                <span class="badge bg-primary">{{ results|length }} adet</span>
+            </h5>
+            <div class="table-responsive">
+                <table id="results-table" class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>App Name</th>
+                            <th>Instance Name</th>
+                            <th>Server IP</th>
+                            <th>Hostname</th>
+                            <th>Runtime Type</th>
+                            <th>Java Vendor</th>
+                            <th>Java Version</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in results %}
+                        <tr>
+                            <td><strong>{{ r.app_name }}</strong></td>
+                            <td>{{ r.instance_name }}</td>
+                            <td><code>{{ r.server_ip }}</code></td>
+                            <td>{{ r.hostname }}</td>
+                            <td><span class="badge bg-secondary">{{ r.type }}</span></td>
+                            <td>{{ r.java.vendor }}</td>
+                            <td>{{ r.java.version }}</td>
+                            <td>
+                                <a class="btn btn-outline-primary btn-sm" href="/topology/{{ r.app_name }}" style="white-space: nowrap;">
+                                    <i class="bi bi-diagram-3"></i> Topolojiyi Gör
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if results|length == 0 %}
+            <div class="text-center text-muted p-4">
+                <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
+                <p class="mt-3">Eşleşen uygulama bulunamadı.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+<style>
+    .remove-filter-btn {
+        color: var(--danger);
+        transition: all var(--transition-base);
+    }
+    .remove-filter-btn:hover {
+        transform: scale(1.1);
+        color: var(--danger);
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script>
+    // Backend'den gelen verileri global değişkenlere atayalım
+    const fieldValues = {{ field_values | tojson | safe }};
+    const savedFiltersJson = {{ filters_json | tojson | safe }};
+</script>
+<script>
+    const availableFields = [
+        {value: 'app_name', label: 'App Name'},
+        {value: 'instance_name', label: 'Instance Name'},
+        {value: 'server_ip', label: 'Server IP'},
+        {value: 'hostname', label: 'Hostname'},
+        {value: 'type', label: 'Runtime Type'},
+        {value: 'java.vendor', label: 'Java Vendor'},
+        {value: 'java.version', label: 'Java Version'},
+        {value: 'pid', label: 'PID'},
+        {value: 'on_netscalers', label: 'NetScaler IP'},
+        {value: 'connected_dbs', label: 'Database Connection'}
+    ];
+    
+    const operators = [
+        {value: 'equals', label: 'Eşittir (=)'},
+        {value: 'contains', label: 'İçerir'},
+        {value: 'starts_with', label: 'Başlar'},
+        {value: 'ends_with', label: 'Biter'},
+        {value: 'regex', label: 'Regex'}
+    ];
+    
+    let filterCount = 0;
+    
+    function createFilterRow(logic = 'AND', field = '', operator = 'equals', value = '') {
+        const rowId = `filter-${filterCount++}`;
+        const logicClass = logic === 'AND' ? 'AND' : 'OR';
+        const isFirst = filterCount === 1;
+        
+        const row = `
+            <div class="filter-row" data-row-id="${rowId}">
+                ${!isFirst ? `<span class="logic-badge ${logicClass}" data-logic="${logic}">${logic}</span>` : '<span style="width: 50px;"></span>'}
+                <select class="form-select filter-field" name="filters[${rowId}][field]" required>
+                    <option value="">Alan Seçin</option>
+                    ${availableFields.map(f => `<option value="${f.value}" ${field === f.value ? 'selected' : ''}>${f.label}</option>`).join('')}
+                </select>
+                <select class="form-select filter-operator" name="filters[${rowId}][operator]" required>
+                    ${operators.map(op => `<option value="${op.value}" ${operator === op.value ? 'selected' : ''}>${op.label}</option>`).join('')}
+                </select>
+                <input type="text" class="form-control filter-value" name="filters[${rowId}][value]" placeholder="Değer" value="${value}" list="datalist-${rowId}" autocomplete="off" required>
+                <datalist id="datalist-${rowId}"></datalist>
+                <input type="hidden" class="filter-logic" name="filters[${rowId}][logic]" value="${logic}">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-filter-btn" onclick="removeFilter('${rowId}')">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        `;
+        return row;
+    }
+    
+    function removeFilter(rowId) {
+        $(`.filter-row[data-row-id="${rowId}"]`).remove();
+        updateLogicBadges();
+    }
+    
+    function updateLogicBadges() {
+        $('.filter-row').each(function(index) {
+            if (index === 0) return; // İlk satırda logic badge yok
+            const logic = $(this).find('.filter-logic').val();
+            const badge = $(this).find('.logic-badge');
+            badge.text(logic);
+            badge.attr('data-logic', logic);
+            badge.removeClass('AND OR').addClass(logic);
+        });
+    }
+    
+    function toggleLogic(badge) {
+        const newLogic = $(badge).attr('data-logic') === 'AND' ? 'OR' : 'AND';
+        $(badge).attr('data-logic', newLogic);
+        $(badge).text(newLogic);
+        $(badge).removeClass('AND OR').addClass(newLogic);
+        $(badge).closest('.filter-row').find('.filter-logic').val(newLogic);
+    }
+    
+    // İlk filtreyi ekle
+    $('#add-filter-btn').click(function() {
+        const logic = $('.filter-row').length > 0 ? 'AND' : 'AND';
+        const row = createFilterRow(logic);
+        $('#filters-container').append(row);
+        updateLogicBadges();
+        // Yeni eklenen row'un ID'sini al ve autocomplete'i başlat
+        const newRowId = $('.filter-row').last().attr('data-row-id');
+        updateAutocomplete(newRowId, '');
+    });
+    
+    // Logic badge'e tıklanınca toggle
+    $(document).on('click', '.logic-badge', function() {
+        toggleLogic(this);
+    });
+    
+    // Temizle butonu
+    $('#clear-filters-btn').click(function() {
+        $('#filters-container').empty();
+        filterCount = 0;
+    });
+    
+    // Field değiştiğinde autocomplete listesini güncelle
+    function updateAutocomplete(rowId, field) {
+        const datalist = $(`#datalist-${rowId}`);
+        datalist.empty();
+        
+        if (!field || !fieldValues) return;
+        
+        const values = fieldValues[field] || [];
+        
+        values.forEach(val => {
+            if (val) {
+                datalist.append(`<option value="${val}">`);
+            }
+        });
+    }
+    
+    // Field değişikliğini dinle
+    $(document).on('change', '.filter-field', function() {
+        const rowId = $(this).closest('.filter-row').attr('data-row-id');
+        const field = $(this).val();
+        updateAutocomplete(rowId, field);
+    });
+    
+    // Sayfa yüklendiğinde mevcut filtreleri yükle (eğer varsa)
+    document.addEventListener('DOMContentLoaded', function() {
+        // Backend'den gelen filters_json'u kullan
+        let savedFilters = {};
+        
+        if (savedFiltersJson) {
+            try {
+                savedFilters = typeof savedFiltersJson === 'string' ? JSON.parse(savedFiltersJson) : savedFiltersJson;
+            } catch(e) {
+                console.error('Filter parse hatası:', e);
+                savedFilters = {};
+            }
+        }
+        
+        if (!savedFilters || Object.keys(savedFilters).length === 0) {
+            // İlk filtreyi ekle
+            const firstRow = createFilterRow('AND');
+            $('#filters-container').append(firstRow);
+            const firstRowId = $('.filter-row').first().attr('data-row-id');
+            updateAutocomplete(firstRowId, '');
+        } else {
+            // Mevcut filtreleri yükle
+            try {
+                Object.keys(savedFilters).forEach(key => {
+                    const f = savedFilters[key];
+                    const row = createFilterRow(
+                        f.logic || 'AND',
+                        f.field || '',
+                        f.operator || 'equals',
+                        f.value || ''
+                    );
+                    $('#filters-container').append(row);
+                    const rowId = $('.filter-row').last().attr('data-row-id');
+                    updateAutocomplete(rowId, f.field || '');
+                });
+                updateLogicBadges();
+            } catch(e) {
+                console.error('Filter yükleme hatası:', e);
+                const firstRow = createFilterRow('AND');
+                $('#filters-container').append(firstRow);
+                const firstRowId = $('.filter-row').first().attr('data-row-id');
+                updateAutocomplete(firstRowId, '');
+            }
+        }
+        
+        // Form submit'te filtreleri JSON'a çevir ve URL'de sakla
+        $('#search-form').on('submit', function(e) {
+            const filters = {};
+            $('.filter-row').each(function() {
+                const rowId = $(this).attr('data-row-id');
+                const field = $(this).find('.filter-field').val();
+                const operator = $(this).find('.filter-operator').val();
+                const value = $(this).find('.filter-value').val();
+                const logic = $(this).find('.filter-logic').val() || 'AND';
+                
+                // Sadece field ve value dolu olan filtreleri ekle
+                if (field && value && value.trim()) {
+                    filters[rowId] = {
+                        field: field,
+                        operator: operator,
+                        value: value.trim(),
+                        logic: logic
+                    };
+                }
+            });
+            
+            // Hidden input olarak ekle (boş olsa bile gönder)
+            $('input[name="filters_json"]').remove();
+            $('<input>').attr({
+                type: 'hidden',
+                name: 'filters_json',
+                value: JSON.stringify(filters)
+            }).appendTo(this);
+        });
+        
+        // DataTable
+        if (document.getElementById('results-table')) {
+            $('#results-table').DataTable({
+                language: {
+                    url: "//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json"
+                },
+                pageLength: 15,
+                lengthMenu: [ [15, 50, 100, -1], [15, 50, 100, 'Hepsi'] ]
+            });
+        }
+    });
+</script>
+{% endblock %}

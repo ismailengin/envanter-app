@@ -2,33 +2,39 @@
 {%block head%}
 <meta charset='utf-8'>
 <meta http-equiv='X-UA-Compatible' content='IE=edge'>
-<title>Chart Sample</title>
+<title>Runtime Chart - MWBE</title>
 <meta name='viewport' content='width=device-width, initial-scale=1'>
 {% endblock %}
-</div>
-</nav>
 
 {% block content %}
-<div class="container-sm justify-content-center pb-5 pe-5 ps-5">
-  <div class="chart-container">
-    <canvas id="runtime_chart"></canvas>
-  </div>
+<div class="mb-4">
+    <h2><i class="bi bi-pie-chart"></i> Runtime Dağılımı</h2>
+    <p class="text-muted">Uygulama runtime türlerinin dağılımını görüntüleyin</p>
 </div>
-
-<div class="container-xl ms-auto me-auto ps-5">
-  <div class="row">
-    {%for runtime in runtime_stats%}
-    {% if runtime[0]|capitalize in ['Liberty','Tomcat','Wasnd','Standalone']%}
-    <div class="col border m-2 p-3">
-      <div>
-        <img src="/static/{{runtime[0]|lower}}.png" class="w-25 h-30 me-2"><b>{{runtime[0]|capitalize}} </b> :
-        {{runtime[1]}}
-      </div>
+    
+    <div class="chart-container">
+        <canvas id="runtime_chart"></canvas>
     </div>
-    {%endif%}
-    {%endfor%}
-  </div>
-</div>
+
+    <div class="row mt-4">
+        {%for runtime in runtime_stats%}
+        {% if runtime[0]|capitalize in ['Liberty','Tomcat','Wasnd','Standalone']%}
+        <div class="col-md-6 col-lg-3">
+            <div class="card text-center h-100">
+                <div class="card-body d-flex flex-column align-items-center justify-content-center p-4">
+                    <img src="/static/{{runtime[0]|lower}}.png" class="mb-3" style="width: 80px; height: auto; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));">
+                    <h5 class="card-title mb-2">{{runtime[0]|capitalize}}</h5>
+                    <p class="card-text">
+                        <span class="badge bg-primary" style="font-size: 1.1rem; padding: var(--spacing-sm) var(--spacing-lg);">
+                            {{runtime[1]}}
+                        </span>
+                    </p>
+                </div>
+            </div>
+        </div>
+        {%endif%}
+        {%endfor%}
+    </div>
 {% endblock %}
 
 {% block scripts %}

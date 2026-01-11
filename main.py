@@ -9,7 +9,7 @@ from requests_ntlm import HttpNtlmAuth
 import json
 import schedule
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 import urllib3
 import pytz
@@ -17,6 +17,15 @@ from flask_ldap3_login import LDAP3LoginManager, AuthenticationResponseStatus
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_ldap3_login.forms import LDAPLoginForm
 import logging
+
+# FastAPI and MongoDB imports for inventory API
+from fastapi import FastAPI as FastAPIApp, HTTPException, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
+from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import UpdateOne, MongoClient
+import re
 
 load_dotenv()
 
@@ -120,8 +129,8 @@ users = {
 # Define user roles and their allowed endpoints
 user_roles = {
     'infrafw': ['/fw'],  # infrafw user can only access /fw
-    'admin': ['/', '/chart', '/fw'],  # admin has access to all endpoints
-    'default': ['/', '/chart', '/fw']  # other users can access all endpoints
+    'admin': ['/', '/chart', '/fw', '/search'],  # admin has access to all endpoints
+    'default': ['/', '/chart', '/fw', '/search']  # other users can access all endpoints
 }
 
 
@@ -946,6 +955,654 @@ def update_os_handler():
         update_os_version(hostname, os_version)
         return "Succesfully added entry"
 
+@app.route('/topology/<app_name>')
+def get_topology(app_name):
+    if not current_user.is_authenticated:
+        return redirect(url_for('login'))
+    
+    if flask_mongodb_db is None:
+        return jsonify({"error": "MongoDB connection not available"}), 500
+    
+    # Query all instances and filter by base app name extracted from instance_name
+    # JVM names follow pattern like AppName+NodeID, extract base name for grouping
+    all_instances = list(flask_mongodb_db.apps_current.find({}))
+    
+    # Filter instances where the base app name (extracted from instance_name) matches
+    instances = []
+    for inst in all_instances:
+        instance_name = inst.get('instance_name', '')
+        # Extract base application name by removing trailing digits
+        base_app_name = re.sub(r'\d+$', '', instance_name).rstrip('_').rstrip('-')
+        # Also check the stored app_name field as fallback
+        if base_app_name == app_name or inst.get('app_name') == app_name:
+            instances.append(inst)
+    
+    nodes = []
+    edges = []
+    seen_nodes = set()
+
+    for inst in instances:
+        instance_id = inst.get('instance_name', inst.get('_id', 'unknown'))
+        
+        # 1. Uygulama Node'u (JVM)
+        if instance_id not in seen_nodes:
+            nodes.append({
+                "id": instance_id,
+                "label": f"{instance_id}\n({inst.get('type', 'Unknown')})",
+                "group": "jvm",
+                "title": f"Java: {inst.get('java', {}).get('version', 'Unknown')}", # Hover bilgisi
+                "details": inst # Tüm datayı JS tarafına gönderiyoruz
+            })
+            seen_nodes.add(instance_id)
+
+        # 2. NetScaler Node'ları ve Bağlantıları
+        for dns in inst.get('dns_records', []):
+            if dns not in seen_nodes:
+                nodes.append({"id": dns, "label": dns, "group": "netscaler"})
+                seen_nodes.add(dns)
+            edges.append({"from": dns, "to": instance_id, "arrows": "to"})
+
+        # 3. Database Node'ları ve Bağlantıları
+        for db_conn in inst.get('connected_dbs', []):
+            if db_conn not in seen_nodes:
+                nodes.append({"id": db_conn, "label": db_conn, "group": "database"})
+                seen_nodes.add(db_conn)
+            edges.append({"from": instance_id, "to": db_conn, "arrows": "to"})
+
+    return render_template('topology_vis.html', 
+        nodes=nodes, 
+        edges=edges, 
+        app_name=app_name,
+        allowed_endpoints=get_user_allowed_endpoints()
+    )
+
+
+# =============================
+# ENVANTER ARAMA (SEARCH PAGE)
+# =============================
+import re
+import json
+
+def build_mongo_query_from_filters(filters_json_str):
+    """
+    Görsel query builder'dan gelen filtreleri MongoDB query'sine çevirir.
+    
+    filters_json_str: JSON string, örnek:
+    {
+        "filter-0": {
+            "field": "java.vendor",
+            "operator": "equals",
+            "value": "IBM",
+            "logic": "AND"
+        },
+        "filter-1": {
+            "field": "type",
+            "operator": "contains",
+            "value": "Tomcat",
+            "logic": "OR"
+        }
+    }
+    """
+    if not filters_json_str:
+        return {}
+    
+    try:
+        filters = json.loads(filters_json_str)
+    except:
+        return {}
+    
+    if not filters:
+        return {}
+    
+    # Filtreleri logic'e göre grupla
+    and_conditions = {}
+    or_groups = []
+    current_and_group = {}
+    
+    filter_items = list(filters.items())
+    
+    for idx, (filter_id, filter_data) in enumerate(filter_items):
+        field = filter_data.get('field', '').strip()
+        operator = filter_data.get('operator', 'equals')
+        value = filter_data.get('value', '').strip()
+        logic = filter_data.get('logic', 'AND')
+        
+        if not field or not value:
+            continue
+        
+        # Operator'a göre MongoDB query oluştur
+        mongo_condition = None
+        if operator == 'equals':
+            # Case-insensitive exact match
+            mongo_condition = {field: {"$regex": f"^{re.escape(value)}$", "$options": "i"}}
+        elif operator == 'contains':
+            mongo_condition = {field: {"$regex": re.escape(value), "$options": "i"}}
+        elif operator == 'starts_with':
+            mongo_condition = {field: {"$regex": f"^{re.escape(value)}", "$options": "i"}}
+        elif operator == 'ends_with':
+            mongo_condition = {field: {"$regex": f"{re.escape(value)}$", "$options": "i"}}
+        elif operator == 'regex':
+            mongo_condition = {field: {"$regex": value, "$options": "i"}}
+        
+        # Array field'lar için $elemMatch kullan (on_netscalers, connected_dbs gibi)
+        if field in ['on_netscalers', 'connected_dbs', 'dns_records']:
+            if operator == 'equals':
+                mongo_condition = {field: {"$elemMatch": {"$regex": f"^{re.escape(value)}$", "$options": "i"}}}
+            elif operator == 'contains':
+                mongo_condition = {field: {"$elemMatch": {"$regex": re.escape(value), "$options": "i"}}}
+            elif operator == 'starts_with':
+                mongo_condition = {field: {"$elemMatch": {"$regex": f"^{re.escape(value)}", "$options": "i"}}}
+            elif operator == 'ends_with':
+                mongo_condition = {field: {"$elemMatch": {"$regex": f"{re.escape(value)}$", "$options": "i"}}}
+            elif operator == 'regex':
+                mongo_condition = {field: {"$elemMatch": {"$regex": value, "$options": "i"}}}
+        
+        if not mongo_condition:
+            continue
+        
+        # Logic'e göre ekle
+        if logic == 'OR' or (idx > 0 and filter_items[idx-1][1].get('logic') == 'OR'):
+            # OR grubu başlat veya mevcut AND grubunu OR grubuna ekle
+            if current_and_group:
+                or_groups.append(current_and_group)
+                current_and_group = {}
+            current_and_group.update(mongo_condition)
+        else:
+            # AND - mevcut gruba ekle
+            current_and_group.update(mongo_condition)
+    
+    # Son grubu ekle
+    if current_and_group:
+        if or_groups:
+            or_groups.append(current_and_group)
+        else:
+            and_conditions.update(current_and_group)
+    
+    # Final query oluştur
+    if or_groups:
+        # OR grupları varsa $or kullan
+        if len(or_groups) == 1:
+            return or_groups[0]
+        return {"$or": or_groups}
+    elif and_conditions:
+        return and_conditions
+    
+    return {}
+
+@app.route('/search', methods=['GET'])
+def search_inventory():
+    if not current_user.is_authenticated:
+        return redirect(url_for('login'))
+    
+    if flask_mongodb_db is None:
+        return 'MongoDB bağlantısı yok', 500
+
+    filters_json = request.args.get('filters_json', '')
+    
+    # Autocomplete için tüm field'ların distinct değerlerini hazırla
+    field_values = {
+        'app_name': sorted(flask_mongodb_db.apps_current.distinct('app_name')),
+        'instance_name': sorted(flask_mongodb_db.apps_current.distinct('instance_name')),
+        'server_ip': sorted(flask_mongodb_db.apps_current.distinct('server_ip')),
+        'hostname': sorted(flask_mongodb_db.apps_current.distinct('hostname')),
+        'type': sorted(flask_mongodb_db.apps_current.distinct('type')),
+        'java.vendor': sorted([j for j in set([doc.get('java', {}).get('vendor','') for doc in flask_mongodb_db.apps_current.find({}, {'java.vendor': 1})]) if j]),
+        'java.version': sorted([j for j in set([doc.get('java', {}).get('version','') for doc in flask_mongodb_db.apps_current.find({}, {'java.version': 1})]) if j]),
+        'pid': sorted([str(p) for p in set([doc.get('pid','') for doc in flask_mongodb_db.apps_current.find({}, {'pid': 1})]) if p]),
+    }
+    
+    # Array field'lar için tüm değerleri topla
+    all_netscalers = set()
+    all_dbs = set()
+    all_dns = set()
+    for doc in flask_mongodb_db.apps_current.find({}, {'on_netscalers': 1, 'connected_dbs': 1, 'dns_records': 1}):
+        all_netscalers.update(doc.get('on_netscalers', []))
+        all_dbs.update(doc.get('connected_dbs', []))
+        all_dns.update(doc.get('dns_records', []))
+    field_values['on_netscalers'] = sorted(list(all_netscalers))
+    field_values['connected_dbs'] = sorted(list(all_dbs))
+    field_values['dns_records'] = sorted(list(all_dns))
+
+    # Filtreleri parse et ve query oluştur
+    query = build_mongo_query_from_filters(filters_json) if filters_json else {}
+    
+    # Sonuçları bul - boş query ise tüm sonuçları getir
+    if query:
+        results = list(flask_mongodb_db.apps_current.find(query))
+    else:
+        # Filtre yoksa tüm sonuçları getir
+        results = list(flask_mongodb_db.apps_current.find({}))
+
+    return render_template('search.html',
+        results=results,
+        filters_json=filters_json,  # Filtreleri geri gönder
+        field_values=field_values,  # Autocomplete için
+        allowed_endpoints=get_user_allowed_endpoints()
+    )
+
+# ============================================================================
+# FastAPI MongoDB Backend for Java/Middleware Inventory
+# ============================================================================
+
+# FastAPI app for inventory API
+fastapi_app = FastAPIApp(
+    title="Middleware & Java Inventory API",
+    description="Centralized inventory system for Middleware and Java applications",
+    version="1.0.0"
+)
+
+# CORS middleware for FastAPI
+fastapi_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure appropriately for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# MongoDB connection for inventory
+mongodb_client: Optional[AsyncIOMotorClient] = None
+mongodb_db = None
+mongodb_collection = None
+
+# Synchronous MongoDB client for Flask routes
+flask_mongodb_client = None
+flask_mongodb_db = None
+
+def init_flask_mongodb():
+    """Initialize synchronous MongoDB connection for Flask routes."""
+    global flask_mongodb_client, flask_mongodb_db
+    try:
+        mongodb_url = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
+        mongodb_db_name = os.getenv("MONGODB_DB", "inventory")
+        # Check if middleware_db exists (from seed.py), otherwise use inventory
+        flask_mongodb_client = MongoClient(mongodb_url)
+        # Try middleware_db first (used by seed.py), fallback to inventory
+        if "middleware_db" in flask_mongodb_client.list_database_names():
+            flask_mongodb_db = flask_mongodb_client["middleware_db"]
+        else:
+            flask_mongodb_db = flask_mongodb_client[mongodb_db_name]
+        logging.info(f"Flask: Connected to MongoDB {flask_mongodb_db.name}")
+    except Exception as e:
+        logging.error(f"Flask: Failed to connect to MongoDB: {e}")
+
+# Initialize Flask MongoDB on import
+init_flask_mongodb()
+
+# Pydantic models for FastAPI
+class JavaInfo(BaseModel):
+    path: str
+    vendor: str
+    version: str
+
+
+class DBConnection(BaseModel):
+    host: str
+    port: int
+    type: str
+
+
+class ProcessData(BaseModel):
+    pid: int
+    hostname: str
+    app_name: str
+    runtime_type: str
+    java: JavaInfo
+    jvm_args: List[str]
+    jvm_args_raw: str
+    db_connections: List[DBConnection]
+    working_directory: Optional[str] = None
+    discovered_at: str
+
+
+class DiscoveryPayload(BaseModel):
+    hostname: str
+    discovered_at: str
+    processes: List[ProcessData]
+    process_count: int
+
+
+class AppSummary(BaseModel):
+    app_name: str
+    total_instances: int
+    running_instances: int
+    hosts: List[str]
+    runtime_types: List[str]
+    config_differences: Dict[str, Any] = {}
+
+
+@fastapi_app.on_event("startup")
+async def startup_mongodb():
+    """Initialize MongoDB connection for FastAPI."""
+    global mongodb_client, mongodb_db, mongodb_collection
+    try:
+        mongodb_url = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
+        mongodb_db_name = os.getenv("MONGODB_DB", "inventory")
+        mongodb_collection_name = os.getenv("MONGODB_COLLECTION", "java_apps")
+        
+        mongodb_client = AsyncIOMotorClient(mongodb_url)
+        mongodb_db = mongodb_client[mongodb_db_name]
+        mongodb_collection = mongodb_db[mongodb_collection_name]
+        
+        # Create indexes for efficient queries
+        await mongodb_collection.create_index([("hostname", 1), ("pid", 1)], unique=True)
+        await mongodb_collection.create_index([("app_name", 1)])
+        await mongodb_collection.create_index([("hostname", 1)])
+        await mongodb_collection.create_index([("last_seen", -1)])
+        await mongodb_collection.create_index([("is_running", 1)])
+        
+        logging.info(f"FastAPI: Connected to MongoDB {mongodb_db_name}/{mongodb_collection_name}")
+    except Exception as e:
+        logging.error(f"FastAPI: Failed to connect to MongoDB: {e}")
+
+
+@fastapi_app.on_event("shutdown")
+async def shutdown_mongodb():
+    """Close MongoDB connection."""
+    global mongodb_client
+    if mongodb_client:
+        mongodb_client.close()
+        logging.info("FastAPI: MongoDB connection closed")
+
+
+async def mark_missing_processes_as_stopped(
+    hostname: str,
+    current_pids: set,
+    current_time: datetime
+):
+    """
+    Mark processes that were not found in the latest scan as is_running: False.
+    This handles lifecycle management.
+    """
+    try:
+        # Find all processes for this host that are marked as running
+        running_processes = await mongodb_collection.find({
+            "hostname": hostname,
+            "is_running": True
+        }).to_list(length=None)
+        
+        # Mark processes that are no longer running
+        updates = []
+        for proc in running_processes:
+            if proc["pid"] not in current_pids:
+                updates.append(
+                    UpdateOne(
+                        {"_id": proc["_id"]},
+                        {
+                            "$set": {
+                                "is_running": False,
+                                "last_seen": current_time
+                            }
+                        }
+                    )
+                )
+        
+        if updates:
+            await mongodb_collection.bulk_write(updates)
+            logging.info(f"FastAPI: Marked {len(updates)} processes as stopped on {hostname}")
+            
+    except Exception as e:
+        logging.error(f"FastAPI: Error marking stopped processes: {e}", exc_info=True)
+
+
+def detect_config_drift(instances: List[Dict]) -> Dict[str, Any]:
+    """
+    Detect configuration differences between instances of the same app.
+    Compares JVM args, Java versions, etc.
+    """
+    if len(instances) < 2:
+        return {}
+    
+    differences = {}
+    
+    # Compare JVM args
+    jvm_args_sets = [set(inst.get("jvm_args", [])) for inst in instances]
+    if len(set(tuple(sorted(args)) for args in jvm_args_sets)) > 1:
+        differences["jvm_args"] = {
+            "status": "drift_detected",
+            "message": "JVM arguments differ between instances",
+            "instances": {
+                f"{inst['hostname']}:{inst['pid']}": inst.get("jvm_args", [])
+                for inst in instances
+            }
+        }
+    
+    # Compare Java versions
+    java_versions = [inst.get("java", {}).get("version", "Unknown") for inst in instances]
+    unique_versions = set(java_versions)
+    if len(unique_versions) > 1:
+        differences["java_versions"] = {
+            "status": "drift_detected",
+            "message": "Java versions differ between instances",
+            "versions": list(unique_versions),
+            "instances": {
+                f"{inst['hostname']}:{inst['pid']}": inst.get("java", {}).get("version", "Unknown")
+                for inst in instances
+            }
+        }
+    
+    # Compare Java vendors
+    java_vendors = [inst.get("java", {}).get("vendor", "Unknown") for inst in instances]
+    unique_vendors = set(java_vendors)
+    if len(unique_vendors) > 1:
+        differences["java_vendors"] = {
+            "status": "drift_detected",
+            "message": "Java vendors differ between instances",
+            "vendors": list(unique_vendors)
+        }
+    
+    return differences
+
+
+# FastAPI Endpoints
+@fastapi_app.post("/api/v1/discovery", status_code=200)
+async def receive_discovery(
+    payload: DiscoveryPayload,
+    background_tasks: BackgroundTasks
+):
+    """
+    Receive discovery data from collector scripts.
+    Stores each JVM process as a separate document (app-centric model).
+    """
+    try:
+        current_time = datetime.now(timezone.utc)
+        hostname = payload.hostname
+        
+        # Track current PIDs for this host to mark missing ones as not running
+        current_pids = {p.pid for p in payload.processes}
+        
+        # Prepare bulk operations
+        bulk_operations = []
+        
+        for process in payload.processes:
+            # Create document for this JVM process
+            doc = {
+                "pid": process.pid,
+                "hostname": hostname,
+                "app_name": process.app_name,
+                "runtime_type": process.runtime_type,
+                "java": process.java.dict(),
+                "jvm_args": process.jvm_args,
+                "jvm_args_raw": process.jvm_args_raw,
+                "db_connections": [conn.dict() for conn in process.db_connections],
+                "working_directory": process.working_directory,
+                "discovered_at": process.discovered_at,
+                "last_seen": current_time,
+                "is_running": True
+            }
+            
+            # Upsert: update if exists (same hostname + pid), insert if new
+            bulk_operations.append(
+                UpdateOne(
+                    {"hostname": hostname, "app_name": process.app_name},
+                    {"$set": doc},
+                    upsert=True
+                )
+            )
+        
+        # Execute bulk operations
+        if bulk_operations:
+            result = await mongodb_collection.bulk_write(bulk_operations)
+            logging.info(
+                f"FastAPI: Processed {result.upserted_count + result.modified_count} processes "
+                f"from {hostname} ({result.upserted_count} new, {result.modified_count} updated)"
+            )
+        
+        # Mark missing PIDs as not running (background task)
+        background_tasks.add_task(
+            mark_missing_processes_as_stopped,
+            hostname,
+            current_pids,
+            current_time
+        )
+        
+        return {
+            "status": "success",
+            "hostname": hostname,
+            "processed": len(payload.processes),
+            "timestamp": current_time.isoformat()
+        }
+        
+    except Exception as e:
+        logging.error(f"FastAPI: Error processing discovery data: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@fastapi_app.get("/api/v1/apps", response_model=List[AppSummary])
+async def get_apps_summary(
+    app_name: Optional[str] = None,
+    hostname: Optional[str] = None,
+    runtime_type: Optional[str] = None,
+    is_running: Optional[bool] = None
+):
+    """
+    Get summary of applications grouped by app_name.
+    Supports filtering and provides HA/drift detection insights.
+    """
+    try:
+        # Build query
+        query = {}
+        if app_name:
+            query["app_name"] = app_name
+        if hostname:
+            query["hostname"] = hostname
+        if runtime_type:
+            query["runtime_type"] = runtime_type
+        if is_running is not None:
+            query["is_running"] = is_running
+        
+        # Aggregate by app_name
+        pipeline = [
+            {"$match": query},
+            {
+                "$group": {
+                    "_id": "$app_name",
+                    "instances": {"$push": "$$ROOT"},
+                    "total_count": {"$sum": 1},
+                    "running_count": {
+                        "$sum": {"$cond": ["$is_running", 1, 0]}
+                    },
+                    "hosts": {"$addToSet": "$hostname"},
+                    "runtime_types": {"$addToSet": "$runtime_type"}
+                }
+            }
+        ]
+        
+        results = []
+        async for group in mongodb_collection.aggregate(pipeline):
+            instances = group["instances"]
+            app_name_val = group["_id"]
+            
+            # Detect config differences (drift detection)
+            config_differences = detect_config_drift(instances)
+            
+            results.append(AppSummary(
+                app_name=app_name_val,
+                total_instances=group["total_count"],
+                running_instances=group["running_count"],
+                hosts=sorted(group["hosts"]),
+                runtime_types=sorted(group["runtime_types"]),
+                config_differences=config_differences
+            ))
+        
+        return sorted(results, key=lambda x: x.app_name)
+        
+    except Exception as e:
+        logging.error(f"FastAPI: Error getting apps summary: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@fastapi_app.get("/api/v1/processes")
+async def get_processes(
+    hostname: Optional[str] = None,
+    app_name: Optional[str] = None,
+    is_running: Optional[bool] = None,
+    limit: int = 100,
+    skip: int = 0
+):
+    """
+    Get detailed process information with filtering.
+    """
+    try:
+        query = {}
+        if hostname:
+            query["hostname"] = hostname
+        if app_name:
+            query["app_name"] = app_name
+        if is_running is not None:
+            query["is_running"] = is_running
+        
+        cursor = mongodb_collection.find(query).sort("last_seen", -1).skip(skip).limit(limit)
+        processes = await cursor.to_list(length=limit)
+        
+        # Convert ObjectId to string for JSON serialization
+        for proc in processes:
+            proc["_id"] = str(proc["_id"])
+        
+        total = await mongodb_collection.count_documents(query)
+        
+        return {
+            "processes": processes,
+            "total": total,
+            "limit": limit,
+            "skip": skip
+        }
+        
+    except Exception as e:
+        logging.error(f"FastAPI: Error getting processes: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@fastapi_app.get("/api/v1/health")
+async def health_check():
+    """Health check endpoint."""
+    try:
+        # Check MongoDB connection
+        await mongodb_db.command("ping")
+        return {
+            "status": "healthy",
+            "mongodb": "connected",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        logging.error(f"FastAPI: Health check failed: {e}")
+        raise HTTPException(status_code=503, detail="MongoDB connection failed")
+
+
+@fastapi_app.get("/")
+async def fastapi_root():
+    """Root endpoint with API information."""
+    return {
+        "name": "Middleware & Java Inventory API",
+        "version": "1.0.0",
+        "endpoints": {
+            "discovery": "/api/v1/discovery",
+            "apps": "/api/v1/apps",
+            "processes": "/api/v1/processes",
+            "health": "/api/v1/health"
+        }
+    }
+
 
 if __name__ == '__main__':
     # Do initial download
@@ -960,5 +1617,31 @@ if __name__ == '__main__':
     scheduler_thread.daemon = True
     scheduler_thread.start()
     
-    # Run Flask without debug mode for Docker
-    app.run(host='0.0.0.0', debug=False)
+    # Run both Flask and FastAPI concurrently
+    flask_port = int(os.getenv('FLASK_PORT', '5000'))
+    fastapi_port = int(os.getenv('FASTAPI_PORT', '8000'))
+    
+    def run_flask():
+        """Run Flask app in a separate thread."""
+        logging.info(f"Starting Flask on port {flask_port}")
+        app.run(host='0.0.0.0', port=flask_port, debug=False, use_reloader=False)
+    
+    def run_fastapi():
+        """Run FastAPI app."""
+        import uvicorn
+        logging.info(f"Starting FastAPI on port {fastapi_port}")
+        uvicorn.run(fastapi_app, host='0.0.0.0', port=fastapi_port)
+    
+    # Start Flask in a daemon thread
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.daemon = True
+    flask_thread.start()
+    
+    # Run FastAPI in the main thread (blocking)
+    # This keeps the main process alive
+    try:
+        run_fastapi()
+    except KeyboardInterrupt:
+        logging.info("Shutting down servers...")
+
+

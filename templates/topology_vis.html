@@ -1,0 +1,381 @@
+{% extends 'layout.html' %}
+
+{% block head %}
+<title>Topoloji - {{ app_name }}</title>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.27.0/dist/cytoscape.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+<style>
+    .topology-container {
+        padding: var(--spacing-xl);
+        max-width: 100%;
+    }
+    
+    #cy {
+        flex: 1;
+        min-height: 650px;
+    }
+    
+    #details-panel {
+        width: 350px;
+        min-height: 650px;
+        padding: var(--spacing-xl);
+        overflow-y: auto;
+    }
+    
+    #details-panel h3 {
+        color: var(--primary);
+        margin-top: 0;
+        padding-bottom: var(--spacing-md);
+        border-bottom: 2px solid var(--gray-300);
+    }
+    
+    .detail-section {
+        margin-bottom: var(--spacing-xl);
+    }
+    
+    .detail-label {
+        font-weight: 600;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-bottom: var(--spacing-sm);
+    }
+    
+    .jvm-args {
+        font-family: 'Courier New', monospace;
+        font-size: 0.85rem;
+        background: var(--gray-100);
+        padding: var(--spacing-md);
+        border-radius: var(--radius-md);
+        max-height: 200px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+    
+    .empty-state {
+        text-align: center;
+        color: var(--text-muted);
+        padding: var(--spacing-3xl) var(--spacing-xl);
+    }
+    
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: var(--spacing-lg);
+        opacity: 0.5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="topology-container">
+        <div class="topology-header">
+            <h2><i class="bi bi-diagram-3"></i> {{ app_name }} - İnteraktif Altyapı Haritası</h2>
+            <p class="mb-0 mt-2" style="opacity: 0.9;">Düğümlere tıklayarak detaylı bilgi görüntüleyin</p>
+        </div>
+        
+        <div class="topology-content">
+            <div id="cy"></div>
+            <div id="details-panel">
+                <div class="empty-state">
+                    <i class="bi bi-cursor"></i>
+                    <h4>Detay Paneli</h4>
+                    <p>Bilgi görmek için bir düğüme tıklayın.</p>
+                </div>
+            </div>
+        </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // DOM yüklendikten sonra çalış
+    document.addEventListener('DOMContentLoaded', function() {
+        // Cytoscape'in yüklendiğini kontrol et
+        if (typeof cytoscape === 'undefined') {
+            console.error('Cytoscape.js yüklenemedi!');
+            const cyContainer = document.getElementById('cy');
+            if (cyContainer) {
+                cyContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: red;"><h3>Cytoscape.js yüklenemedi. Lütfen internet bağlantınızı kontrol edin.</h3></div>';
+            }
+            return;
+        }
+        
+        console.log('Cytoscape.js yüklendi');
+        
+        // Veri hazırlama
+        const nodesData = {{ nodes | tojson }};
+        const edgesData = {{ edges | tojson }};
+        
+        console.log('Nodes:', nodesData);
+        console.log('Edges:', edgesData);
+        
+        // Cytoscape için veri formatına dönüştürme
+        const cyElements = [];
+        
+        // Node'ları ekle
+        if (nodesData && nodesData.length > 0) {
+            nodesData.forEach(node => {
+                cyElements.push({
+                    data: {
+                        id: String(node.id),
+                        label: node.label || node.id,
+                        group: node.group || 'jvm',
+                        details: node.details || null
+                    }
+                });
+            });
+        } else {
+            console.warn('Hiç node bulunamadı!');
+            const cyContainer = document.getElementById('cy');
+            if (cyContainer) {
+                cyContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #6c757d;"><h3>Görüntülenecek veri bulunamadı.</h3><p>Bu uygulama için henüz topoloji verisi yok.</p></div>';
+            }
+            return;
+        }
+        
+        // Edge'leri ekle
+        if (edgesData && edgesData.length > 0) {
+            edgesData.forEach(edge => {
+                cyElements.push({
+                    data: {
+                        id: String(edge.from) + '-' + String(edge.to),
+                        source: String(edge.from),
+                        target: String(edge.to)
+                    }
+                });
+            });
+        }
+        
+        console.log('Cytoscape elements:', cyElements);
+        console.log('Toplam node:', cyElements.filter(e => e.data.source === undefined).length);
+        console.log('Toplam edge:', cyElements.filter(e => e.data.source !== undefined).length);
+        
+        // Container kontrolü
+        const container = document.getElementById('cy');
+        if (!container) {
+            console.error('Cytoscape container bulunamadı!');
+            return;
+        }
+        
+        // Cytoscape başlatma
+        try {
+            const cy = cytoscape({
+                container: container,
+                elements: cyElements,
+                style: [
+                    {
+                        selector: 'node[group="jvm"]',
+                        style: {
+                            'background-color': '#ffc107',
+                            'border-color': '#ff9800',
+                            'border-width': 3,
+                            'shape': 'round-rectangle',
+                            'width': 'label',
+                            'height': 'label',
+                            'padding': '10px',
+                            'label': 'data(label)',
+                            'font-size': '14px',
+                            'font-weight': 'bold',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'color': '#212529',
+                            'text-wrap': 'wrap',
+                            'text-max-width': '150px'
+                        }
+                    },
+                    {
+                        selector: 'node[group="netscaler"]',
+                        style: {
+                            'background-color': '#17a2b8',
+                            'border-color': '#138496',
+                            'border-width': 3,
+                            'shape': 'hexagon',
+                            'width': 'label',
+                            'height': 'label',
+                            'padding': '10px',
+                            'label': 'data(label)',
+                            'font-size': '14px',
+                            'font-weight': 'bold',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'color': 'white',
+                            'text-wrap': 'wrap',
+                            'text-max-width': '150px'
+                        }
+                    },
+                    {
+                        selector: 'node[group="database"]',
+                        style: {
+                            'background-color': '#28a745',
+                            'border-color': '#218838',
+                            'border-width': 3,
+                            'shape': 'ellipse',
+                            'width': 'label',
+                            'height': 'label',
+                            'padding': '10px',
+                            'label': 'data(label)',
+                            'font-size': '14px',
+                            'font-weight': 'bold',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'color': 'white',
+                            'text-wrap': 'wrap',
+                            'text-max-width': '150px'
+                        }
+                    },
+                    {
+                        selector: 'node',
+                        style: {
+                            'font-family': 'Arial, sans-serif'
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'width': 2,
+                            'line-color': '#6c757d',
+                            'target-arrow-color': '#6c757d',
+                            'target-arrow-shape': 'triangle',
+                            'curve-style': 'bezier'
+                        }
+                    }
+                ],
+                layout: {
+                    name: 'breadthfirst',
+                    directed: true,
+                    spacingFactor: 1.5,
+                    padding: 30
+                },
+                minZoom: 0.1,
+                maxZoom: 2,
+                wheelSensitivity: 0.2
+            });
+            
+            console.log('Cytoscape instance oluşturuldu');
+            console.log('Node sayısı:', cy.nodes().length);
+            console.log('Edge sayısı:', cy.edges().length);
+            
+            // Layout tamamlandığında fit yap
+            cy.ready(function() {
+                if (cy.nodes().length > 0) {
+                    setTimeout(function() {
+                        cy.fit(cy.elements(), 50);
+                        console.log('Layout uygulandı ve fit yapıldı');
+                    }, 100);
+                } else {
+                    console.warn('Görüntülenecek node yok!');
+                }
+            });
+    
+            
+            // Node tıklama olayı
+            cy.on('tap', 'node', function(evt) {
+            const node = evt.target;
+            const nodeData = node.data();
+            const panel = document.getElementById('details-panel');
+            
+            if (nodeData.details) {
+                const d = nodeData.details;
+                let html = `
+                    <h3><i class="bi bi-server"></i> ${d.instance_name || nodeData.label}</h3>
+                    <hr>
+                    <div class="detail-section">
+                        <div class="detail-label"><i class="bi bi-pc-display"></i> Hostname</div>
+                        <div class="detail-value">${d.hostname || 'N/A'}</div>
+                    </div>
+                    <div class="detail-section">
+                        <div class="detail-label"><i class="bi bi-ip"></i> Server IP</div>
+                        <div class="detail-value">${d.server_ip || 'N/A'}</div>
+                    </div>
+                    <div class="detail-section">
+                        <div class="detail-label"><i class="bi bi-code-slash"></i> Java</div>
+                        <div class="detail-value">${(d.java && d.java.vendor) ? d.java.vendor : 'N/A'} - ${(d.java && d.java.version) ? d.java.version : 'N/A'}</div>
+                    </div>
+                    <div class="detail-section">
+                        <div class="detail-label"><i class="bi bi-tag"></i> Runtime Type</div>
+                        <div class="detail-value">${d.type || 'N/A'}</div>
+                    </div>
+                    <div class="detail-section">
+                        <div class="detail-label"><i class="bi bi-hash"></i> PID</div>
+                        <div class="detail-value">${d.pid || 'N/A'}</div>
+                    </div>
+                `;
+                
+                if (d.jvm_args && d.jvm_args.length > 0) {
+                    html += `
+                        <div class="detail-section">
+                            <div class="detail-label"><i class="bi bi-gear"></i> JVM Arguments</div>
+                            <div class="jvm-args">${Array.isArray(d.jvm_args) ? d.jvm_args.join('\n') : d.jvm_args}</div>
+                        </div>
+                    `;
+                }
+                
+                if (d.connected_dbs && d.connected_dbs.length > 0) {
+                    html += `
+                        <div class="detail-section">
+                            <div class="detail-label"><i class="bi bi-database"></i> Database Connections</div>
+                            <div class="detail-value">${Array.isArray(d.connected_dbs) ? d.connected_dbs.join(', ') : d.connected_dbs}</div>
+                        </div>
+                    `;
+                }
+                
+                if (d.dns_records && d.dns_records.length > 0) {
+                    html += `
+                        <div class="detail-section">
+                            <div class="detail-label"><i class="bi bi-globe"></i> DNS Records</div>
+                            <div class="detail-value">${Array.isArray(d.dns_records) ? d.dns_records.join(', ') : d.dns_records}</div>
+                        </div>
+                    `;
+                }
+                
+                panel.innerHTML = html;
+            } else {
+                panel.innerHTML = `
+                    <h3><i class="bi bi-info-circle"></i> ${nodeData.label}</h3>
+                    <hr>
+                    <div class="detail-section">
+                        <p>Bu bir ${nodeData.group === 'netscaler' ? 'NetScaler' : 'Database'} düğümüdür.</p>
+                    </div>
+                `;
+            }
+            
+            // Seçili node'u vurgula
+            cy.elements().removeClass('highlighted');
+            node.addClass('highlighted');
+        });
+        
+        // Boş alana tıklanınca seçimi temizle
+        cy.on('tap', function(evt) {
+            if (evt.target === cy) {
+                cy.elements().removeClass('highlighted');
+                const panel = document.getElementById('details-panel');
+                panel.innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-cursor"></i>
+                        <h4>Detay Paneli</h4>
+                        <p>Bilgi görmek için bir düğüme tıklayın.</p>
+                    </div>
+                `;
+            }
+        });
+        
+        // Highlight stili
+        cy.style()
+            .selector('.highlighted')
+            .style({
+                'border-width': 5,
+                'border-color': '#dc3545',
+                'background-opacity': 0.9
+            })
+            .update();
+        } catch (error) {
+            console.error('Cytoscape başlatılırken hata:', error);
+            const cyContainer = document.getElementById('cy');
+            if (cyContainer) {
+                cyContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: red;"><h3>Görselleştirme oluşturulamadı.</h3><p>' + error.message + '</p></div>';
+            }
+        }
+    });
+</script>
+{% endblock %}
